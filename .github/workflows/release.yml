@@ -1,0 +1,42 @@
+name: Release
+
+permissions:
+  contents: write
+
+on:
+  push:
+    tags:
+      - "v[0-9]+.[0-9]+.[0-9]+"
+
+jobs:
+  build-and-release:
+    name: "Build and Release"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: sigoden/install-binary@v1
+        with:
+          repo: sigoden/argc
+          tag: v1.22.0
+      # shfmt for formatting shell scripts
+      - uses: sigoden/install-binary@v1
+        with:
+          repo: mvdan/sh
+          tag: v3.10.0
+          name: shfmt
+      - name: Clean up
+        run: argc clean
+      - name: Compile and build binaries
+        run: argc build
+      - name: Test binaries
+        run: argc test
+      - name: Distribute binaries
+        run: argc dist
+      - name: Release
+        uses: docker://antonyurchenko/git-release:v6
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          args: |
+            dist/*.tar.gz
+            dist/*.sha256
