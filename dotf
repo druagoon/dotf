@@ -1,0 +1,1746 @@
+#!/usr/bin/env bash
+
+# @describe Dotfiles cli
+#
+#      _       _    __
+#   __| | ___ | |_ / _|
+#  / _` |/ _ \| __| |_
+# | (_| | (_) | |_|  _|
+#  \__,_|\___/ \__|_|
+#
+# @meta version 0.1.0
+# @meta author lazyboy <lazyboy.fan@gmail.com>
+# @meta require-tools sed,awk,git,shfmt,icli
+# @meta inherit-flag-options
+
+set -e
+
+#include "lib/std/bool.sh"
+std::bool::is_true() {
+    case "$1" in
+        true | yes | [Yy] | on | 1)
+            true
+            return
+            ;;
+        *)
+            false
+            return
+            ;;
+    esac
+}
+
+std::bool::is_false() {
+    case "$1" in
+        false | no | [Nn] | off | 0 | "")
+            true
+            return
+            ;;
+        *)
+            false
+            return
+            ;;
+    esac
+}
+#include "lib/std/string.sh"
+std::string::strip_whitespace() {
+    sed -e 's/^[[:blank:]]*//' -e 's/[[:blank:]]*$//' <<<"$1"
+}
+
+std::string::lstrip_whitespace() {
+    sed -e 's/^[[:blank:]]*//' <<<"$1"
+}
+
+std::string::rstrip_whitespace() {
+    sed -e 's/[[:blank:]]*$//' <<<"$1"
+}
+#include "lib/std/os.sh"
+std::os::is_linux() {
+    [[ "$(uname)" == "Linux" ]]
+}
+
+std::os::is_macos() {
+    [[ "$(uname)" == "Darwin" ]]
+}
+
+std::os::is_arm64() {
+    local arch="$(uname -m)"
+    [[ "${arch}" == "arm64" || "${arch}" == "aarch64" ]]
+}
+#include "lib/std/colors.sh"
+## Color functions
+##
+## Usage:
+## Use any of the functions below to color or format a portion of a string.
+##
+##   echo "before $(std::color::red this is red) after"
+##   echo "before $(std::color::green_bold this is green_bold) after"
+##
+## Color output will be disabled if `NO_COLOR` environment variable is set
+## in compliance with https://no-color.org/
+##
+std::color::display() {
+    local color="$1"
+    shift
+    if [[ -z ${NO_COLOR+x} ]]; then
+        printf "${color}%b\e[0m\n" "$*"
+    else
+        printf "%b\n" "$*"
+    fi
+}
+
+std::color::red() { std::color::display "\e[31m" "$*"; }
+std::color::green() { std::color::display "\e[32m" "$*"; }
+std::color::yellow() { std::color::display "\e[33m" "$*"; }
+std::color::blue() { std::color::display "\e[34m" "$*"; }
+std::color::magenta() { std::color::display "\e[35m" "$*"; }
+std::color::cyan() { std::color::display "\e[36m" "$*"; }
+std::color::bold() { std::color::display "\e[1m" "$*"; }
+std::color::underlined() { std::color::display "\e[4m" "$*"; }
+std::color::red_bold() { std::color::display "\e[1;31m" "$*"; }
+std::color::green_bold() { std::color::display "\e[1;32m" "$*"; }
+std::color::yellow_bold() { std::color::display "\e[1;33m" "$*"; }
+std::color::blue_bold() { std::color::display "\e[1;34m" "$*"; }
+std::color::magenta_bold() { std::color::display "\e[1;35m" "$*"; }
+std::color::cyan_bold() { std::color::display "\e[1;36m" "$*"; }
+std::color::red_underlined() { std::color::display "\e[4;31m" "$*"; }
+std::color::green_underlined() { std::color::display "\e[4;32m" "$*"; }
+std::color::yellow_underlined() { std::color::display "\e[4;33m" "$*"; }
+std::color::blue_underlined() { std::color::display "\e[4;34m" "$*"; }
+std::color::magenta_underlined() { std::color::display "\e[4;35m" "$*"; }
+std::color::cyan_underlined() { std::color::display "\e[4;36m" "$*"; }
+#include "lib/std/message.sh"
+std::message::format() {
+    local prefix="$1"
+    shift
+    local format="$1"
+    shift
+    printf "${prefix}: ${format}\n" "$@"
+}
+
+std::message::info() {
+    local msg="$(std::message::format "INFO" "$@")"
+    std::color::green "${msg}"
+}
+
+std::message::warning() {
+    local msg="$(std::message::format "WARNING" "$@")"
+    std::color::yellow "${msg}"
+}
+
+std::message::error() {
+    local msg="$(std::message::format "ERROR" "$@")"
+    std::color::red "${msg}" >&2
+}
+
+std::message::fatal() {
+    std::message::error "$@"
+    exit 1
+}
+#include "lib/std/path.sh"
+std::path::dir::ensure() {
+    local dir="$1"
+    if [[ ! -d "$dir" ]]; then
+        mkdir -p "$dir"
+    fi
+}
+
+std::path::file::ensure() {
+    local file="$1"
+    if [[ ! -f "${file}" ]]; then
+        touch "$file"
+    fi
+}
+
+std::path::file::ensure_dir() {
+    local file="$1"
+    if [[ ! -f "${file}" ]]; then
+        local dir="$(dirname "$file")"
+        std::path::dir::ensure "$dir"
+        touch "$file"
+    fi
+}
+
+#include "lib/local/consts.sh"
+# Global
+DOTF_ROOT="${DOTFILES_ROOT:-${HOME}/.dotfiles}"
+DOTF_PKG_ROOT="${DOTF_ROOT}/packages"
+
+## Plugin
+DOTF_PLUGIN_PREFIX="dotf"
+
+dotf::pkg::dir::get() {
+    local name="$1"
+    echo "${DOTF_PKG_ROOT}/${name}"
+}
+
+dotf::pkg::completions::dir() {
+    local name="$1"
+    local pkg_dir="$(dotf::pkg::dir::get "${name}")"
+    echo "${pkg_dir}/.oh-my-zsh/custom/completions"
+}
+
+## OS
+DOTF_OS_LAYOUT_DIR="$(dotf::pkg::dir::get "os/layouts")"
+
+## Link
+DOTF_LINK_STOW_SRC="${DOTF_PKG_ROOT}"
+DOTF_LINK_STOW_TARGET="$(dirname "${DOTF_ROOT}")"
+DOTF_LINK_EXCLUDE_PKG=(.git .venv .vscode)
+DOTF_LINK_EXCLUDE_PKG_STRING=$(
+    IFS=":"
+    echo "${DOTF_LINK_EXCLUDE_PKG[*]}"
+)
+
+## Brew
+DOTF_PKG_BREW_DIR="$(dotf::pkg::dir::get brew)"
+
+## Git
+DOTF_PKG_GIT_DIR="$(dotf::pkg::dir::get git)"
+
+## Go
+DOTF_PKG_GO_DIR="$(dotf::pkg::dir::get go)"
+
+## iCli
+DOTF_PKG_ICLI_DIR="$(dotf::pkg::dir::get icli)"
+
+## Rust
+DOTF_PKG_RUST_DIR="$(dotf::pkg::dir::get rust)"
+#include "lib/local/path.sh"
+dotf::path::gitkeep::exists() {
+    local file="$1/.gitkeep"
+    [[ -f "${file}" ]]
+}
+
+dotf::path::gitkeep::ensure_dir() {
+    local file="$1/.gitkeep"
+    std::path::file::ensure_dir "${file}"
+}
+
+# Commands
+#include "commands/brewfile/cli.sh"
+# @cmd Manage brewfile
+brewfile() {
+    return
+}
+#include "commands/brewfile/generate.sh"
+# @cmd Generate Brewfile by `brew bundle dump`
+#
+# Examples:
+#   dotf brewfile generate
+#
+brewfile::generate() {
+    cd "${DOTF_PKG_BREW_DIR}" && brew bundle dump --describe --force
+}
+
+#include "commands/completion/cli.sh"
+# @cmd Manage package command completions
+completion() {
+    return
+}
+#include "commands/completion/go.sh"
+# @cmd Generate golang completions
+#
+# Examples:
+#   dotf completion go
+#
+# @meta require-tools wget
+completion::go() {
+    local source="https://github.com/zsh-users/zsh-completions/raw/master/src/_golang"
+    local comp_dir="$(dotf::pkg::completions::dir go)"
+    std::path::dir::ensure "${comp_dir}"
+    local target="${comp_dir}/_golang"
+    wget -q -O "${target}" "${source}"
+}
+#include "commands/completion/icli.sh"
+# @cmd Generate icli completions
+#
+# Examples:
+#   dotf completion icli
+#
+# @meta require-tools icli
+completion::icli() {
+    local comp_dir="$(dotf::pkg::completions::dir icli)"
+    std::path::dir::ensure "${comp_dir}"
+    local target="${comp_dir}/_icli"
+    icli completion zsh >"${target}"
+}
+#include "commands/completion/rust.sh"
+# @cmd Generate rustup and cargo completions
+#
+# Examples:
+#   dotf completion rust
+#
+# @meta require-tools rustup,cargo
+completion::rust() {
+    local comp_dir="$(dotf::pkg::completions::dir rust)"
+    std::path::dir::ensure "${comp_dir}"
+    local comp_cargo="${comp_dir}/_cargo"
+    local comp_rustup="${comp_dir}/_rustup"
+    rustup completions zsh cargo >"${comp_cargo}"
+    rustup completions zsh rustup >"${comp_rustup}"
+}
+
+#include "commands/gitignore/cli.sh"
+# @cmd Manage gitignore files
+gitignore() {
+    return
+}
+#include "commands/gitignore/generate.sh"
+# @cmd Generate global .gitignore file
+#
+# Examples:
+#   dotf gitignore generate
+#
+# @meta require-tools gsed,git-ignore
+gitignore::generate() {
+    cd "${DOTF_PKG_GIT_DIR}" \
+        && git-ignore -u global | gsed '1,3d' >./.gitignore_global \
+        && echo >>./.gitignore_global \
+        && git-ignore user | gsed '1,3d' >>./.gitignore_global
+}
+
+#include "commands/link.sh"
+# @cmd Create symbolic links for dotfiles packages
+#
+# Examples:
+#   dotf link -- -v
+#   dotf link -- -v -n
+#   dotf link -- -v -n --adopt
+#   dotf link --regenerate-stow-local-ignore -- -v -n
+#
+# @meta require-tools stow,gawk
+# @arg stow*                                capture all remaining options for stow
+# @flag    --regenerate-stow-local-ignore   regenerate the .stow-local-ignore file for each package
+link() {
+    dotf_link_make_deps
+    dotf_link_make_pkgs
+}
+
+dotf_link_stow_log() {
+    local result
+    if [[ $? -eq 0 ]]; then
+        result="$(std::color::green_bold OK)"
+    else
+        result="$(std::color::red_bold ERROR)"
+    fi
+    printf "%-12s [ %s ]\n" "$1" "${result}"
+}
+
+dotf_link_stow() {
+    local opt=$(
+        IFS=" "
+        echo "${argc_stow[*]}"
+    )
+    stow ${opt} -d "${DOTF_LINK_STOW_SRC}" -t "${DOTF_LINK_STOW_TARGET}" "$@"
+}
+
+dotf_link_pkg_is_exclude() {
+    [[ ":${DOTF_LINK_EXCLUDE_PKG_STRING}:" == *":$1:"* ]]
+}
+
+dotf_link_stow_local_ignore() {
+    local name="$1"
+    local pkg_dir="${DOTF_LINK_STOW_SRC}/${name}"
+    local source="${pkg_dir}/.stow-local-ignore.inc"
+    local target="${pkg_dir}/.stow-local-ignore"
+
+    if [[ ! -f "${source}" ]]; then
+        return
+    fi
+    if [[ -f "${target}" ]] && std::bool::is_false "${argc_regenerate_stow_local_ignore}"; then
+        return
+    fi
+
+    gawk '
+        BEGIN {
+            print "### Generated at", strftime("%Y-%m-%dT%H:%M:%S%z")
+        }
+        {
+            print $0;
+            if (NF == 2 && $1 == "#include") {
+                sub("~", "'"$HOME"'", $2);
+                while ((getline line < $2) > 0)
+                    print line
+                close($2)
+            }
+        }
+    ' "${source}" >"${target}"
+}
+
+dotf_link_make_deps() {
+    local deps=(
+        stow
+        zsh
+        brew
+        rust
+        go
+        conda
+        python
+    )
+    for v in "${deps[@]}"; do
+        dotf_link_stow_local_ignore "$v"
+        dotf_link_stow "$v"
+        dotf_link_stow_log "$v"
+    done
+}
+
+dotf_link_make_pkgs() {
+    find "${DOTF_LINK_STOW_SRC}" -maxdepth 1 -mindepth 1 -type d | sort | while read path; do
+        local name=$(basename "${path}")
+        if ! dotf_link_pkg_is_exclude "${name}"; then
+            dotf_link_stow_local_ignore "${name}"
+            dotf_link_stow "${name}"
+            dotf_link_stow_log "${name}"
+        fi
+    done
+}
+
+#include "commands/layout/cli.sh"
+# @cmd Manage the layout of the local git repository
+layout() {
+    return
+}
+#include "commands/layout/export.sh"
+# @cmd Export the layout of the local git repository to a file
+#
+# Examples:
+#   dotf layout export ~/Code/github --layout github
+#   dotf layout export ~/Code/github --output ./github
+#
+# @meta require-tools git
+# @arg path!                            Path of the git repository
+# @option -o --output <FILE>            Write layouts to file
+# @option    --layout <NAME>            Write layouts to file in ${DOTF_OS_LAYOUT_DIR} directory
+# @option    --max-depth=4 <NUMBER>     Maximum depth to locate git repository in the path
+# @flag   -n --dry-run                  Show what layouts will be export (not actually run)
+layout::export() {
+    local path="${argc_path%/}"
+    local output="${argc_output}"
+    local layout="${argc_layout}"
+    local max_depth="${argc_max_depth}"
+    local dry_run="${argc_dry_run}"
+
+    if [[ -z "${output}" ]]; then
+        if [[ -n "${layout}" ]]; then
+            output="${DOTF_OS_LAYOUT_DIR}/${layout}"
+        else
+            std::message::fatal "missing --output or --layout, please see --help for detail."
+        fi
+    fi
+
+    if ! std::bool::is_true "${dry_run}"; then
+        local output_dir="$(dirname "${output}")"
+        mkdir -p "${output_dir}"
+        # Clear layout file content
+        >"${output}"
+    fi
+
+    local filedir
+    local url
+    local target
+    local line
+    if std::bool::is_true "${dry_run}"; then
+        std::message::warning "in simulation mode so not modifying filesystem."
+    fi
+    find "${path}" -maxdepth "${max_depth}" -name ".git" ! -path '*/.local/*' | sort | while read filename; do
+        filedir=$(dirname "${filename}")
+        url="$(git -C "${filedir}" config --get remote.origin.url)"
+        target="${filedir/#${HOME}/\~}"
+        line="${target}\n    ${url}"
+        if std::bool::is_true "${dry_run}"; then
+            printf "${line}\n"
+        else
+            printf "${line}\n" >>"${output}"
+        fi
+    done
+}
+#include "commands/layout/sync.sh"
+# @cmd Sync the layout from a file
+#
+# Examples:
+#   dotf layout sync --layout github
+#   dotf layout sync --source ./github
+#
+# @meta require-tools git
+# @option -s --source           Read layouts from the file
+# @option    --layout           Read layouts from ${DOTF_OS_LAYOUT_DIR} directory
+# @flag   -n --dry-run          Show what layouts will be export (not actually run)
+layout::sync() {
+    local source="${argc_source}"
+    local layout="${argc_layout}"
+    local dry_run="${argc_dry_run}"
+
+    if [[ -z "${source}" ]]; then
+        if [[ -n "${layout}" ]]; then
+            source="${DOTF_OS_LAYOUT_DIR}/${layout}"
+        else
+            std::message::fatal "missing --source or --layout, please see --help for detail."
+        fi
+    fi
+    if [[ ! -f "${source}" ]]; then
+        std::message::fatal "'%s' not exists." "${source}"
+    fi
+
+    if std::bool::is_true "${dry_run}"; then
+        std::message::warning "in simulation mode so not modifying filesystem."
+    fi
+    readarray -t lines <"${source}"
+    set -f # avoid globbing (expansion of *).
+    local path
+    local url
+    local msg
+    for i in $(seq 1 2 ${#lines[@]}); do
+        path="$(std::string::strip_whitespace "${lines[$i - 1]}")"
+        path="${path/#\~/${HOME}}"
+        url="$(std::string::strip_whitespace "${lines[$i]}")"
+        if [[ ! -d "${path}" ]]; then
+            msg="git clone '${url}' to '${path}'"
+            if std::bool::is_true "${dry_run}"; then
+                std::message::warning "${msg}"
+            else
+                echo "${msg}"
+                git clone "${url}" "${path}" && echo
+            fi
+        fi
+    done
+}
+
+#include "commands/package/cli.sh"
+# @cmd Manage dotfiles package
+package() {
+    return
+}
+#include "commands/package/new.sh"
+# @cmd Create a new dotfiles package
+# @arg name!
+# @option    --omz-plugin-name <NAME>       Name of the oh-my-zsh plugin
+# @flag    --no-omz-plugins                 Do not create oh-my-zsh plugins directory
+# @flag    --no-omz-functions               Do not create oh-my-zsh functions directory
+# @flag    --no-omz-completions             Do not create oh-my-zsh completions directory
+package::new() {
+    local name="${argc_name}"
+    local pkg_dir="$(dotf::pkg::dir::get "${name}")"
+    local pkg_omz_custom_dir="${pkg_dir}/.oh-my-zsh/custom"
+    std::path::dir::ensure "${pkg_omz_custom_dir}"
+
+    if std::bool::is_false "${argc_no_omz_completions}"; then
+        std::path::dir::ensure "${pkg_omz_custom_dir}/completions"
+    fi
+    if std::bool::is_false "${argc_no_omz_functions}"; then
+        std::path::dir::ensure "${pkg_omz_custom_dir}/functions"
+    fi
+    if std::bool::is_false "${argc_no_omz_plugins}"; then
+        local pkg_omz_plugin_name="${argc_omz_plugin_name:-"${DOTF_PLUGIN_PREFIX}-${name}"}"
+        local pkg_omz_plugin_dir="${pkg_omz_custom_dir}/plugins/${pkg_omz_plugin_name}"
+        std::path::dir::ensure "${pkg_omz_plugin_dir}/bin"
+
+        local pkg_omz_plugin_file="${pkg_omz_plugin_dir}/${pkg_omz_plugin_name}.plugin.zsh"
+        std::path::file::ensure "${pkg_omz_plugin_file}"
+
+        local pkg_omz_plugin_readme="${pkg_omz_plugin_dir}/README.md"
+        if [[ ! -f "${pkg_omz_plugin_readme}" ]]; then
+            printf "# ${pkg_omz_plugin_name} plugin\n" >"${pkg_omz_plugin_readme}"
+        fi
+    fi
+}
+
+# ARGC-BUILD {
+# This block was generated by argc (https://github.com/sigoden/argc).
+# Modifying it manually is not recommended
+
+_argc_run() {
+    if [[ "${1:-}" == "___internal___" ]]; then
+        _argc_die "error: unsupported ___internal___ command"
+    fi
+    if [[ "${OS:-}" == "Windows_NT" ]] && [[ -n "${MSYSTEM:-}" ]]; then
+        set -o igncr
+    fi
+    argc__args=("$(basename "$0" .sh)" "$@")
+    argc__positionals=()
+    _argc_index=1
+    _argc_len="${#argc__args[@]}"
+    _argc_tools=()
+    _argc_parse
+    _argc_require_tools "${_argc_tools[@]}"
+    if [ -n "${argc__fn:-}" ]; then
+        $argc__fn "${argc__positionals[@]}"
+    fi
+}
+
+_argc_usage() {
+    cat <<-'EOF'
+dotf 0.1.0
+lazyboy <lazyboy.fan@gmail.com>
+Dotfiles cli
+
+     _       _    __
+  __| | ___ | |_ / _|
+ / _` |/ _ \| __| |_
+| (_| | (_) | |_|  _|
+ \__,_|\___/ \__|_|
+
+USAGE: dotf <COMMAND>
+
+COMMANDS:
+  brewfile    Manage brewfile
+  completion  Manage package command completions
+  gitignore   Manage gitignore files
+  link        Create symbolic links for dotfiles packages
+  layout      Manage the layout of the local git repository
+  package     Manage dotfiles package
+EOF
+    exit
+}
+
+_argc_version() {
+    echo dotf 0.1.0
+    exit
+}
+
+_argc_parse() {
+    local _argc_key _argc_action
+    local _argc_subcmds="brewfile, completion, gitignore, link, layout, package"
+    while [[ $_argc_index -lt $_argc_len ]]; do
+        _argc_item="${argc__args[_argc_index]}"
+        _argc_key="${_argc_item%%=*}"
+        case "$_argc_key" in
+            --help | -help | -h)
+                _argc_usage
+                ;;
+            --version | -version | -V)
+                _argc_version
+                ;;
+            --)
+                _argc_dash="${#argc__positionals[@]}"
+                argc__positionals+=("${argc__args[@]:$((_argc_index + 1))}")
+                _argc_index=$_argc_len
+                break
+                ;;
+            brewfile)
+                _argc_index=$((_argc_index + 1))
+                _argc_action=_argc_parse_brewfile
+                break
+                ;;
+            completion)
+                _argc_index=$((_argc_index + 1))
+                _argc_action=_argc_parse_completion
+                break
+                ;;
+            gitignore)
+                _argc_index=$((_argc_index + 1))
+                _argc_action=_argc_parse_gitignore
+                break
+                ;;
+            link)
+                _argc_index=$((_argc_index + 1))
+                _argc_action=_argc_parse_link
+                break
+                ;;
+            layout)
+                _argc_index=$((_argc_index + 1))
+                _argc_action=_argc_parse_layout
+                break
+                ;;
+            package)
+                _argc_index=$((_argc_index + 1))
+                _argc_action=_argc_parse_package
+                break
+                ;;
+            help)
+                local help_arg="${argc__args[$((_argc_index + 1))]:-}"
+                case "$help_arg" in
+                    brewfile)
+                        _argc_usage_brewfile
+                        ;;
+                    completion)
+                        _argc_usage_completion
+                        ;;
+                    gitignore)
+                        _argc_usage_gitignore
+                        ;;
+                    link)
+                        _argc_usage_link
+                        ;;
+                    layout)
+                        _argc_usage_layout
+                        ;;
+                    package)
+                        _argc_usage_package
+                        ;;
+                    "")
+                        _argc_usage
+                        ;;
+                    *)
+                        _argc_die "error: invalid value \`$help_arg\` for \`<command>\`"$'\n'"  [possible values: $_argc_subcmds]"
+                        ;;
+                esac
+                ;;
+            *)
+                _argc_die "error: \`dotf\` requires a subcommand but one was not provided"$'\n'"  [subcommands: $_argc_subcmds]"
+                ;;
+        esac
+    done
+    _argc_tools=(sed awk git shfmt icli)
+    if [[ -n "${_argc_action:-}" ]]; then
+        $_argc_action
+    else
+        _argc_usage
+    fi
+}
+
+_argc_usage_brewfile() {
+    cat <<-'EOF'
+Manage brewfile
+
+USAGE: dotf brewfile <COMMAND>
+
+COMMANDS:
+  generate  Generate Brewfile by `brew bundle dump`
+EOF
+    exit
+}
+
+_argc_parse_brewfile() {
+    local _argc_key _argc_action
+    local _argc_subcmds="generate"
+    while [[ $_argc_index -lt $_argc_len ]]; do
+        _argc_item="${argc__args[_argc_index]}"
+        _argc_key="${_argc_item%%=*}"
+        case "$_argc_key" in
+            --help | -help | -h)
+                _argc_usage_brewfile
+                ;;
+            --)
+                _argc_dash="${#argc__positionals[@]}"
+                argc__positionals+=("${argc__args[@]:$((_argc_index + 1))}")
+                _argc_index=$_argc_len
+                break
+                ;;
+            generate)
+                _argc_index=$((_argc_index + 1))
+                _argc_action=_argc_parse_brewfile_generate
+                break
+                ;;
+            help)
+                local help_arg="${argc__args[$((_argc_index + 1))]:-}"
+                case "$help_arg" in
+                    generate)
+                        _argc_usage_brewfile_generate
+                        ;;
+                    "")
+                        _argc_usage_brewfile
+                        ;;
+                    *)
+                        _argc_die "error: invalid value \`$help_arg\` for \`<command>\`"$'\n'"  [possible values: $_argc_subcmds]"
+                        ;;
+                esac
+                ;;
+            *)
+                _argc_die "error: \`dotf-brewfile\` requires a subcommand but one was not provided"$'\n'"  [subcommands: $_argc_subcmds]"
+                ;;
+        esac
+    done
+    _argc_tools=(sed awk git shfmt icli)
+    if [[ -n "${_argc_action:-}" ]]; then
+        $_argc_action
+    else
+        _argc_usage_brewfile
+    fi
+}
+
+_argc_usage_brewfile_generate() {
+    cat <<-'EOF'
+Generate Brewfile by `brew bundle dump`
+
+Examples:
+  dotf brewfile generate
+
+USAGE: dotf brewfile generate
+EOF
+    exit
+}
+
+_argc_parse_brewfile_generate() {
+    local _argc_key _argc_action
+    local _argc_subcmds=""
+    while [[ $_argc_index -lt $_argc_len ]]; do
+        _argc_item="${argc__args[_argc_index]}"
+        _argc_key="${_argc_item%%=*}"
+        case "$_argc_key" in
+            --help | -help | -h)
+                _argc_usage_brewfile_generate
+                ;;
+            --)
+                _argc_dash="${#argc__positionals[@]}"
+                argc__positionals+=("${argc__args[@]:$((_argc_index + 1))}")
+                _argc_index=$_argc_len
+                break
+                ;;
+            *)
+                argc__positionals+=("$_argc_item")
+                _argc_index=$((_argc_index + 1))
+                ;;
+        esac
+    done
+    _argc_tools=(sed awk git shfmt icli)
+    if [[ -n "${_argc_action:-}" ]]; then
+        $_argc_action
+    else
+        argc__fn=brewfile::generate
+        if [[ "${argc__positionals[0]:-}" == "help" ]] && [[ "${#argc__positionals[@]}" -eq 1 ]]; then
+            _argc_usage_brewfile_generate
+        fi
+    fi
+}
+
+_argc_usage_completion() {
+    cat <<-'EOF'
+Manage package command completions
+
+USAGE: dotf completion <COMMAND>
+
+COMMANDS:
+  go    Generate golang completions
+  icli  Generate icli completions
+  rust  Generate rustup and cargo completions
+EOF
+    exit
+}
+
+_argc_parse_completion() {
+    local _argc_key _argc_action
+    local _argc_subcmds="go, icli, rust"
+    while [[ $_argc_index -lt $_argc_len ]]; do
+        _argc_item="${argc__args[_argc_index]}"
+        _argc_key="${_argc_item%%=*}"
+        case "$_argc_key" in
+            --help | -help | -h)
+                _argc_usage_completion
+                ;;
+            --)
+                _argc_dash="${#argc__positionals[@]}"
+                argc__positionals+=("${argc__args[@]:$((_argc_index + 1))}")
+                _argc_index=$_argc_len
+                break
+                ;;
+            go)
+                _argc_index=$((_argc_index + 1))
+                _argc_action=_argc_parse_completion_go
+                break
+                ;;
+            icli)
+                _argc_index=$((_argc_index + 1))
+                _argc_action=_argc_parse_completion_icli
+                break
+                ;;
+            rust)
+                _argc_index=$((_argc_index + 1))
+                _argc_action=_argc_parse_completion_rust
+                break
+                ;;
+            help)
+                local help_arg="${argc__args[$((_argc_index + 1))]:-}"
+                case "$help_arg" in
+                    go)
+                        _argc_usage_completion_go
+                        ;;
+                    icli)
+                        _argc_usage_completion_icli
+                        ;;
+                    rust)
+                        _argc_usage_completion_rust
+                        ;;
+                    "")
+                        _argc_usage_completion
+                        ;;
+                    *)
+                        _argc_die "error: invalid value \`$help_arg\` for \`<command>\`"$'\n'"  [possible values: $_argc_subcmds]"
+                        ;;
+                esac
+                ;;
+            *)
+                _argc_die "error: \`dotf-completion\` requires a subcommand but one was not provided"$'\n'"  [subcommands: $_argc_subcmds]"
+                ;;
+        esac
+    done
+    _argc_tools=(sed awk git shfmt icli)
+    if [[ -n "${_argc_action:-}" ]]; then
+        $_argc_action
+    else
+        _argc_usage_completion
+    fi
+}
+
+_argc_usage_completion_go() {
+    cat <<-'EOF'
+Generate golang completions
+
+Examples:
+  dotf completion go
+
+USAGE: dotf completion go
+EOF
+    exit
+}
+
+_argc_parse_completion_go() {
+    local _argc_key _argc_action
+    local _argc_subcmds=""
+    while [[ $_argc_index -lt $_argc_len ]]; do
+        _argc_item="${argc__args[_argc_index]}"
+        _argc_key="${_argc_item%%=*}"
+        case "$_argc_key" in
+            --help | -help | -h)
+                _argc_usage_completion_go
+                ;;
+            --)
+                _argc_dash="${#argc__positionals[@]}"
+                argc__positionals+=("${argc__args[@]:$((_argc_index + 1))}")
+                _argc_index=$_argc_len
+                break
+                ;;
+            *)
+                argc__positionals+=("$_argc_item")
+                _argc_index=$((_argc_index + 1))
+                ;;
+        esac
+    done
+    _argc_tools=(sed awk git shfmt icli wget)
+    if [[ -n "${_argc_action:-}" ]]; then
+        $_argc_action
+    else
+        argc__fn=completion::go
+        if [[ "${argc__positionals[0]:-}" == "help" ]] && [[ "${#argc__positionals[@]}" -eq 1 ]]; then
+            _argc_usage_completion_go
+        fi
+    fi
+}
+
+_argc_usage_completion_icli() {
+    cat <<-'EOF'
+Generate icli completions
+
+Examples:
+  dotf completion icli
+
+USAGE: dotf completion icli
+EOF
+    exit
+}
+
+_argc_parse_completion_icli() {
+    local _argc_key _argc_action
+    local _argc_subcmds=""
+    while [[ $_argc_index -lt $_argc_len ]]; do
+        _argc_item="${argc__args[_argc_index]}"
+        _argc_key="${_argc_item%%=*}"
+        case "$_argc_key" in
+            --help | -help | -h)
+                _argc_usage_completion_icli
+                ;;
+            --)
+                _argc_dash="${#argc__positionals[@]}"
+                argc__positionals+=("${argc__args[@]:$((_argc_index + 1))}")
+                _argc_index=$_argc_len
+                break
+                ;;
+            *)
+                argc__positionals+=("$_argc_item")
+                _argc_index=$((_argc_index + 1))
+                ;;
+        esac
+    done
+    _argc_tools=(sed awk git shfmt icli)
+    if [[ -n "${_argc_action:-}" ]]; then
+        $_argc_action
+    else
+        argc__fn=completion::icli
+        if [[ "${argc__positionals[0]:-}" == "help" ]] && [[ "${#argc__positionals[@]}" -eq 1 ]]; then
+            _argc_usage_completion_icli
+        fi
+    fi
+}
+
+_argc_usage_completion_rust() {
+    cat <<-'EOF'
+Generate rustup and cargo completions
+
+Examples:
+  dotf completion rust
+
+USAGE: dotf completion rust
+EOF
+    exit
+}
+
+_argc_parse_completion_rust() {
+    local _argc_key _argc_action
+    local _argc_subcmds=""
+    while [[ $_argc_index -lt $_argc_len ]]; do
+        _argc_item="${argc__args[_argc_index]}"
+        _argc_key="${_argc_item%%=*}"
+        case "$_argc_key" in
+            --help | -help | -h)
+                _argc_usage_completion_rust
+                ;;
+            --)
+                _argc_dash="${#argc__positionals[@]}"
+                argc__positionals+=("${argc__args[@]:$((_argc_index + 1))}")
+                _argc_index=$_argc_len
+                break
+                ;;
+            *)
+                argc__positionals+=("$_argc_item")
+                _argc_index=$((_argc_index + 1))
+                ;;
+        esac
+    done
+    _argc_tools=(sed awk git shfmt icli rustup cargo)
+    if [[ -n "${_argc_action:-}" ]]; then
+        $_argc_action
+    else
+        argc__fn=completion::rust
+        if [[ "${argc__positionals[0]:-}" == "help" ]] && [[ "${#argc__positionals[@]}" -eq 1 ]]; then
+            _argc_usage_completion_rust
+        fi
+    fi
+}
+
+_argc_usage_gitignore() {
+    cat <<-'EOF'
+Manage gitignore files
+
+USAGE: dotf gitignore <COMMAND>
+
+COMMANDS:
+  generate  Generate global .gitignore file
+EOF
+    exit
+}
+
+_argc_parse_gitignore() {
+    local _argc_key _argc_action
+    local _argc_subcmds="generate"
+    while [[ $_argc_index -lt $_argc_len ]]; do
+        _argc_item="${argc__args[_argc_index]}"
+        _argc_key="${_argc_item%%=*}"
+        case "$_argc_key" in
+            --help | -help | -h)
+                _argc_usage_gitignore
+                ;;
+            --)
+                _argc_dash="${#argc__positionals[@]}"
+                argc__positionals+=("${argc__args[@]:$((_argc_index + 1))}")
+                _argc_index=$_argc_len
+                break
+                ;;
+            generate)
+                _argc_index=$((_argc_index + 1))
+                _argc_action=_argc_parse_gitignore_generate
+                break
+                ;;
+            help)
+                local help_arg="${argc__args[$((_argc_index + 1))]:-}"
+                case "$help_arg" in
+                    generate)
+                        _argc_usage_gitignore_generate
+                        ;;
+                    "")
+                        _argc_usage_gitignore
+                        ;;
+                    *)
+                        _argc_die "error: invalid value \`$help_arg\` for \`<command>\`"$'\n'"  [possible values: $_argc_subcmds]"
+                        ;;
+                esac
+                ;;
+            *)
+                _argc_die "error: \`dotf-gitignore\` requires a subcommand but one was not provided"$'\n'"  [subcommands: $_argc_subcmds]"
+                ;;
+        esac
+    done
+    _argc_tools=(sed awk git shfmt icli)
+    if [[ -n "${_argc_action:-}" ]]; then
+        $_argc_action
+    else
+        _argc_usage_gitignore
+    fi
+}
+
+_argc_usage_gitignore_generate() {
+    cat <<-'EOF'
+Generate global .gitignore file
+
+Examples:
+  dotf gitignore generate
+
+USAGE: dotf gitignore generate
+EOF
+    exit
+}
+
+_argc_parse_gitignore_generate() {
+    local _argc_key _argc_action
+    local _argc_subcmds=""
+    while [[ $_argc_index -lt $_argc_len ]]; do
+        _argc_item="${argc__args[_argc_index]}"
+        _argc_key="${_argc_item%%=*}"
+        case "$_argc_key" in
+            --help | -help | -h)
+                _argc_usage_gitignore_generate
+                ;;
+            --)
+                _argc_dash="${#argc__positionals[@]}"
+                argc__positionals+=("${argc__args[@]:$((_argc_index + 1))}")
+                _argc_index=$_argc_len
+                break
+                ;;
+            *)
+                argc__positionals+=("$_argc_item")
+                _argc_index=$((_argc_index + 1))
+                ;;
+        esac
+    done
+    _argc_tools=(sed awk git shfmt icli gsed git-ignore)
+    if [[ -n "${_argc_action:-}" ]]; then
+        $_argc_action
+    else
+        argc__fn=gitignore::generate
+        if [[ "${argc__positionals[0]:-}" == "help" ]] && [[ "${#argc__positionals[@]}" -eq 1 ]]; then
+            _argc_usage_gitignore_generate
+        fi
+    fi
+}
+
+_argc_usage_link() {
+    cat <<-'EOF'
+Create symbolic links for dotfiles packages
+
+Examples:
+  dotf link -- -v
+  dotf link -- -v -n
+  dotf link -- -v -n --adopt
+  dotf link --regenerate-stow-local-ignore -- -v -n
+
+USAGE: dotf link [OPTIONS] [STOW]...
+
+ARGS:
+  [STOW]...  capture all remaining options for stow
+
+OPTIONS:
+      --regenerate-stow-local-ignore  regenerate the .stow-local-ignore file for each package
+  -h, --help                          Print help
+EOF
+    exit
+}
+
+_argc_parse_link() {
+    local _argc_key _argc_action
+    local _argc_subcmds=""
+    while [[ $_argc_index -lt $_argc_len ]]; do
+        _argc_item="${argc__args[_argc_index]}"
+        _argc_key="${_argc_item%%=*}"
+        case "$_argc_key" in
+            --help | -help | -h)
+                _argc_usage_link
+                ;;
+            --)
+                _argc_dash="${#argc__positionals[@]}"
+                argc__positionals+=("${argc__args[@]:$((_argc_index + 1))}")
+                _argc_index=$_argc_len
+                break
+                ;;
+            --regenerate-stow-local-ignore)
+                if [[ "$_argc_item" == *=* ]]; then
+                    _argc_die "error: flag \`--regenerate-stow-local-ignore\` don't accept any value"
+                fi
+                _argc_index=$((_argc_index + 1))
+                if [[ -n "${argc_regenerate_stow_local_ignore:-}" ]]; then
+                    _argc_die "error: the argument \`--regenerate-stow-local-ignore\` cannot be used multiple times"
+                else
+                    argc_regenerate_stow_local_ignore=1
+                fi
+                ;;
+            *)
+                if _argc_maybe_flag_option "-" "$_argc_item"; then
+                    _argc_die "error: unexpected argument \`$_argc_key\` found"
+                fi
+                argc__positionals+=("$_argc_item")
+                _argc_index=$((_argc_index + 1))
+                ;;
+        esac
+    done
+    _argc_tools=(sed awk git shfmt icli stow gawk)
+    if [[ -n "${_argc_action:-}" ]]; then
+        $_argc_action
+    else
+        argc__fn=link
+        if [[ "${argc__positionals[0]:-}" == "help" ]] && [[ "${#argc__positionals[@]}" -eq 1 ]]; then
+            _argc_usage_link
+        fi
+        _argc_match_positionals 1
+        local values_index values_size
+        IFS=: read -r values_index values_size <<<"${_argc_match_positionals_values[0]:-}"
+        if [[ -n "$values_index" ]]; then
+            argc_stow=("${argc__positionals[@]:values_index:values_size}")
+        fi
+    fi
+}
+
+_argc_usage_layout() {
+    cat <<-'EOF'
+Manage the layout of the local git repository
+
+USAGE: dotf layout <COMMAND>
+
+COMMANDS:
+  export  Export the layout of the local git repository to a file
+  sync    Sync the layout from a file
+EOF
+    exit
+}
+
+_argc_parse_layout() {
+    local _argc_key _argc_action
+    local _argc_subcmds="export, sync"
+    while [[ $_argc_index -lt $_argc_len ]]; do
+        _argc_item="${argc__args[_argc_index]}"
+        _argc_key="${_argc_item%%=*}"
+        case "$_argc_key" in
+            --help | -help | -h)
+                _argc_usage_layout
+                ;;
+            --)
+                _argc_dash="${#argc__positionals[@]}"
+                argc__positionals+=("${argc__args[@]:$((_argc_index + 1))}")
+                _argc_index=$_argc_len
+                break
+                ;;
+            export)
+                _argc_index=$((_argc_index + 1))
+                _argc_action=_argc_parse_layout_export
+                break
+                ;;
+            sync)
+                _argc_index=$((_argc_index + 1))
+                _argc_action=_argc_parse_layout_sync
+                break
+                ;;
+            help)
+                local help_arg="${argc__args[$((_argc_index + 1))]:-}"
+                case "$help_arg" in
+                    export)
+                        _argc_usage_layout_export
+                        ;;
+                    sync)
+                        _argc_usage_layout_sync
+                        ;;
+                    "")
+                        _argc_usage_layout
+                        ;;
+                    *)
+                        _argc_die "error: invalid value \`$help_arg\` for \`<command>\`"$'\n'"  [possible values: $_argc_subcmds]"
+                        ;;
+                esac
+                ;;
+            *)
+                _argc_die "error: \`dotf-layout\` requires a subcommand but one was not provided"$'\n'"  [subcommands: $_argc_subcmds]"
+                ;;
+        esac
+    done
+    _argc_tools=(sed awk git shfmt icli)
+    if [[ -n "${_argc_action:-}" ]]; then
+        $_argc_action
+    else
+        _argc_usage_layout
+    fi
+}
+
+_argc_usage_layout_export() {
+    cat <<-'EOF'
+Export the layout of the local git repository to a file
+
+Examples:
+  dotf layout export ~/Code/github --layout github
+  dotf layout export ~/Code/github --output ./github
+
+USAGE: dotf layout export [OPTIONS] <PATH>
+
+ARGS:
+  <PATH>  Path of the git repository
+
+OPTIONS:
+  -o, --output <FILE>       Write layouts to file
+      --layout <NAME>       Write layouts to file in ${DOTF_OS_LAYOUT_DIR} directory
+      --max-depth <NUMBER>  Maximum depth to locate git repository in the path [default: 4]
+  -n, --dry-run             Show what layouts will be export (not actually run)
+  -h, --help                Print help
+EOF
+    exit
+}
+
+_argc_parse_layout_export() {
+    local _argc_key _argc_action
+    local _argc_subcmds=""
+    while [[ $_argc_index -lt $_argc_len ]]; do
+        _argc_item="${argc__args[_argc_index]}"
+        _argc_key="${_argc_item%%=*}"
+        case "$_argc_key" in
+            --help | -help | -h)
+                _argc_usage_layout_export
+                ;;
+            --)
+                _argc_dash="${#argc__positionals[@]}"
+                argc__positionals+=("${argc__args[@]:$((_argc_index + 1))}")
+                _argc_index=$_argc_len
+                break
+                ;;
+            --output | -o)
+                _argc_take_args "--output <FILE>" 1 1 "-" ""
+                _argc_index=$((_argc_index + _argc_take_args_len + 1))
+                if [[ -z "${argc_output:-}" ]]; then
+                    argc_output="${_argc_take_args_values[0]:-}"
+                else
+                    _argc_die "error: the argument \`--output\` cannot be used multiple times"
+                fi
+                ;;
+            --layout)
+                _argc_take_args "--layout <NAME>" 1 1 "-" ""
+                _argc_index=$((_argc_index + _argc_take_args_len + 1))
+                if [[ -z "${argc_layout:-}" ]]; then
+                    argc_layout="${_argc_take_args_values[0]:-}"
+                else
+                    _argc_die "error: the argument \`--layout\` cannot be used multiple times"
+                fi
+                ;;
+            --max-depth)
+                _argc_take_args "--max-depth <NUMBER>" 1 1 "-" ""
+                _argc_index=$((_argc_index + _argc_take_args_len + 1))
+                if [[ -z "${argc_max_depth:-}" ]]; then
+                    argc_max_depth="${_argc_take_args_values[0]:-}"
+                else
+                    _argc_die "error: the argument \`--max-depth\` cannot be used multiple times"
+                fi
+                ;;
+            --dry-run | -n)
+                if [[ "$_argc_item" == *=* ]]; then
+                    _argc_die "error: flag \`--dry-run\` don't accept any value"
+                fi
+                _argc_index=$((_argc_index + 1))
+                if [[ -n "${argc_dry_run:-}" ]]; then
+                    _argc_die "error: the argument \`--dry-run\` cannot be used multiple times"
+                else
+                    argc_dry_run=1
+                fi
+                ;;
+            *)
+                if _argc_maybe_flag_option "-" "$_argc_item"; then
+                    _argc_die "error: unexpected argument \`$_argc_key\` found"
+                fi
+                argc__positionals+=("$_argc_item")
+                _argc_index=$((_argc_index + 1))
+                ;;
+        esac
+    done
+    _argc_tools=(sed awk git shfmt icli)
+    if [[ -n "${_argc_action:-}" ]]; then
+        $_argc_action
+    else
+        argc__fn=layout::export
+        if [[ "${argc__positionals[0]:-}" == "help" ]] && [[ "${#argc__positionals[@]}" -eq 1 ]]; then
+            _argc_usage_layout_export
+        fi
+        _argc_match_positionals 0
+        local values_index values_size
+        IFS=: read -r values_index values_size <<<"${_argc_match_positionals_values[0]:-}"
+        if [[ -n "$values_index" ]]; then
+            argc_path="${argc__positionals[values_index]}"
+        else
+            _argc_die "error: the required environments \`<PATH>\` were not provided"
+        fi
+        if [[ -z "${argc_max_depth:-}" ]]; then
+            argc_max_depth=4
+        fi
+    fi
+}
+
+_argc_usage_layout_sync() {
+    cat <<-'EOF'
+Sync the layout from a file
+
+Examples:
+  dotf layout sync --layout github
+  dotf layout sync --source ./github
+
+USAGE: dotf layout sync [OPTIONS]
+
+OPTIONS:
+  -s, --source <SOURCE>  Read layouts from the file
+      --layout <LAYOUT>  Read layouts from ${DOTF_OS_LAYOUT_DIR} directory
+  -n, --dry-run          Show what layouts will be export (not actually run)
+  -h, --help             Print help
+EOF
+    exit
+}
+
+_argc_parse_layout_sync() {
+    local _argc_key _argc_action
+    local _argc_subcmds=""
+    while [[ $_argc_index -lt $_argc_len ]]; do
+        _argc_item="${argc__args[_argc_index]}"
+        _argc_key="${_argc_item%%=*}"
+        case "$_argc_key" in
+            --help | -help | -h)
+                _argc_usage_layout_sync
+                ;;
+            --)
+                _argc_dash="${#argc__positionals[@]}"
+                argc__positionals+=("${argc__args[@]:$((_argc_index + 1))}")
+                _argc_index=$_argc_len
+                break
+                ;;
+            --source | -s)
+                _argc_take_args "--source <SOURCE>" 1 1 "-" ""
+                _argc_index=$((_argc_index + _argc_take_args_len + 1))
+                if [[ -z "${argc_source:-}" ]]; then
+                    argc_source="${_argc_take_args_values[0]:-}"
+                else
+                    _argc_die "error: the argument \`--source\` cannot be used multiple times"
+                fi
+                ;;
+            --layout)
+                _argc_take_args "--layout <LAYOUT>" 1 1 "-" ""
+                _argc_index=$((_argc_index + _argc_take_args_len + 1))
+                if [[ -z "${argc_layout:-}" ]]; then
+                    argc_layout="${_argc_take_args_values[0]:-}"
+                else
+                    _argc_die "error: the argument \`--layout\` cannot be used multiple times"
+                fi
+                ;;
+            --dry-run | -n)
+                if [[ "$_argc_item" == *=* ]]; then
+                    _argc_die "error: flag \`--dry-run\` don't accept any value"
+                fi
+                _argc_index=$((_argc_index + 1))
+                if [[ -n "${argc_dry_run:-}" ]]; then
+                    _argc_die "error: the argument \`--dry-run\` cannot be used multiple times"
+                else
+                    argc_dry_run=1
+                fi
+                ;;
+            *)
+                if _argc_maybe_flag_option "-" "$_argc_item"; then
+                    _argc_die "error: unexpected argument \`$_argc_key\` found"
+                fi
+                argc__positionals+=("$_argc_item")
+                _argc_index=$((_argc_index + 1))
+                ;;
+        esac
+    done
+    _argc_tools=(sed awk git shfmt icli)
+    if [[ -n "${_argc_action:-}" ]]; then
+        $_argc_action
+    else
+        argc__fn=layout::sync
+        if [[ "${argc__positionals[0]:-}" == "help" ]] && [[ "${#argc__positionals[@]}" -eq 1 ]]; then
+            _argc_usage_layout_sync
+        fi
+    fi
+}
+
+_argc_usage_package() {
+    cat <<-'EOF'
+Manage dotfiles package
+
+USAGE: dotf package <COMMAND>
+
+COMMANDS:
+  new  Create a new dotfiles package
+EOF
+    exit
+}
+
+_argc_parse_package() {
+    local _argc_key _argc_action
+    local _argc_subcmds="new"
+    while [[ $_argc_index -lt $_argc_len ]]; do
+        _argc_item="${argc__args[_argc_index]}"
+        _argc_key="${_argc_item%%=*}"
+        case "$_argc_key" in
+            --help | -help | -h)
+                _argc_usage_package
+                ;;
+            --)
+                _argc_dash="${#argc__positionals[@]}"
+                argc__positionals+=("${argc__args[@]:$((_argc_index + 1))}")
+                _argc_index=$_argc_len
+                break
+                ;;
+            new)
+                _argc_index=$((_argc_index + 1))
+                _argc_action=_argc_parse_package_new
+                break
+                ;;
+            help)
+                local help_arg="${argc__args[$((_argc_index + 1))]:-}"
+                case "$help_arg" in
+                    new)
+                        _argc_usage_package_new
+                        ;;
+                    "")
+                        _argc_usage_package
+                        ;;
+                    *)
+                        _argc_die "error: invalid value \`$help_arg\` for \`<command>\`"$'\n'"  [possible values: $_argc_subcmds]"
+                        ;;
+                esac
+                ;;
+            *)
+                _argc_die "error: \`dotf-package\` requires a subcommand but one was not provided"$'\n'"  [subcommands: $_argc_subcmds]"
+                ;;
+        esac
+    done
+    _argc_tools=(sed awk git shfmt icli)
+    if [[ -n "${_argc_action:-}" ]]; then
+        $_argc_action
+    else
+        _argc_usage_package
+    fi
+}
+
+_argc_usage_package_new() {
+    cat <<-'EOF'
+Create a new dotfiles package
+
+USAGE: dotf package new [OPTIONS] <NAME>
+
+ARGS:
+  <NAME>
+
+OPTIONS:
+      --omz-plugin-name <NAME>  Name of the oh-my-zsh plugin
+      --no-omz-plugins          Do not create oh-my-zsh plugins directory
+      --no-omz-functions        Do not create oh-my-zsh functions directory
+      --no-omz-completions      Do not create oh-my-zsh completions directory
+  -h, --help                    Print help
+EOF
+    exit
+}
+
+_argc_parse_package_new() {
+    local _argc_key _argc_action
+    local _argc_subcmds=""
+    while [[ $_argc_index -lt $_argc_len ]]; do
+        _argc_item="${argc__args[_argc_index]}"
+        _argc_key="${_argc_item%%=*}"
+        case "$_argc_key" in
+            --help | -help | -h)
+                _argc_usage_package_new
+                ;;
+            --)
+                _argc_dash="${#argc__positionals[@]}"
+                argc__positionals+=("${argc__args[@]:$((_argc_index + 1))}")
+                _argc_index=$_argc_len
+                break
+                ;;
+            --omz-plugin-name)
+                _argc_take_args "--omz-plugin-name <NAME>" 1 1 "-" ""
+                _argc_index=$((_argc_index + _argc_take_args_len + 1))
+                if [[ -z "${argc_omz_plugin_name:-}" ]]; then
+                    argc_omz_plugin_name="${_argc_take_args_values[0]:-}"
+                else
+                    _argc_die "error: the argument \`--omz-plugin-name\` cannot be used multiple times"
+                fi
+                ;;
+            --no-omz-plugins)
+                if [[ "$_argc_item" == *=* ]]; then
+                    _argc_die "error: flag \`--no-omz-plugins\` don't accept any value"
+                fi
+                _argc_index=$((_argc_index + 1))
+                if [[ -n "${argc_no_omz_plugins:-}" ]]; then
+                    _argc_die "error: the argument \`--no-omz-plugins\` cannot be used multiple times"
+                else
+                    argc_no_omz_plugins=1
+                fi
+                ;;
+            --no-omz-functions)
+                if [[ "$_argc_item" == *=* ]]; then
+                    _argc_die "error: flag \`--no-omz-functions\` don't accept any value"
+                fi
+                _argc_index=$((_argc_index + 1))
+                if [[ -n "${argc_no_omz_functions:-}" ]]; then
+                    _argc_die "error: the argument \`--no-omz-functions\` cannot be used multiple times"
+                else
+                    argc_no_omz_functions=1
+                fi
+                ;;
+            --no-omz-completions)
+                if [[ "$_argc_item" == *=* ]]; then
+                    _argc_die "error: flag \`--no-omz-completions\` don't accept any value"
+                fi
+                _argc_index=$((_argc_index + 1))
+                if [[ -n "${argc_no_omz_completions:-}" ]]; then
+                    _argc_die "error: the argument \`--no-omz-completions\` cannot be used multiple times"
+                else
+                    argc_no_omz_completions=1
+                fi
+                ;;
+            *)
+                if _argc_maybe_flag_option "-" "$_argc_item"; then
+                    _argc_die "error: unexpected argument \`$_argc_key\` found"
+                fi
+                argc__positionals+=("$_argc_item")
+                _argc_index=$((_argc_index + 1))
+                ;;
+        esac
+    done
+    _argc_tools=(sed awk git shfmt icli)
+    if [[ -n "${_argc_action:-}" ]]; then
+        $_argc_action
+    else
+        argc__fn=package::new
+        if [[ "${argc__positionals[0]:-}" == "help" ]] && [[ "${#argc__positionals[@]}" -eq 1 ]]; then
+            _argc_usage_package_new
+        fi
+        _argc_match_positionals 0
+        local values_index values_size
+        IFS=: read -r values_index values_size <<<"${_argc_match_positionals_values[0]:-}"
+        if [[ -n "$values_index" ]]; then
+            argc_name="${argc__positionals[values_index]}"
+        else
+            _argc_die "error: the required environments \`<NAME>\` were not provided"
+        fi
+    fi
+}
+
+_argc_take_args() {
+    _argc_take_args_values=()
+    _argc_take_args_len=0
+    local param="$1" min="$2" max="$3" signs="$4" delimiter="$5"
+    if [[ "$min" -eq 0 ]] && [[ "$max" -eq 0 ]]; then
+        return
+    fi
+    local _argc_take_index=$((_argc_index + 1)) _argc_take_value
+    if [[ "$_argc_item" == *=* ]]; then
+        _argc_take_args_values=("${_argc_item##*=}")
+    else
+        while [[ $_argc_take_index -lt $_argc_len ]]; do
+            _argc_take_value="${argc__args[_argc_take_index]}"
+            if _argc_maybe_flag_option "$signs" "$_argc_take_value"; then
+                if [[ "${#_argc_take_value}" -gt 1 ]]; then
+                    break
+                fi
+            fi
+            _argc_take_args_values+=("$_argc_take_value")
+            _argc_take_args_len=$((_argc_take_args_len + 1))
+            if [[ "$_argc_take_args_len" -ge "$max" ]]; then
+                break
+            fi
+            _argc_take_index=$((_argc_take_index + 1))
+        done
+    fi
+    if [[ "${#_argc_take_args_values[@]}" -lt "$min" ]]; then
+        _argc_die "error: incorrect number of values for \`$param\`"
+    fi
+    if [[ -n "$delimiter" ]] && [[ "${#_argc_take_args_values[@]}" -gt 0 ]]; then
+        local item values arr=()
+        for item in "${_argc_take_args_values[@]}"; do
+            IFS="$delimiter" read -r -a values <<<"$item"
+            arr+=("${values[@]}")
+        done
+        _argc_take_args_values=("${arr[@]}")
+    fi
+}
+
+_argc_match_positionals() {
+    _argc_match_positionals_values=()
+    _argc_match_positionals_len=0
+    local params=("$@")
+    local args_len="${#argc__positionals[@]}"
+    if [[ $args_len -eq 0 ]]; then
+        return
+    fi
+    local params_len=$# arg_index=0 param_index=0
+    while [[ $param_index -lt $params_len && $arg_index -lt $args_len ]]; do
+        local takes=0
+        if [[ "${params[param_index]}" -eq 1 ]]; then
+            if [[ $param_index -eq 0 ]] \
+                && [[ ${_argc_dash:-} -gt 0 ]] \
+                && [[ $params_len -eq 2 ]] \
+                && [[ "${params[$((param_index + 1))]}" -eq 1 ]] \
+                ; then
+                takes=${_argc_dash:-}
+            else
+                local arg_diff=$((args_len - arg_index)) param_diff=$((params_len - param_index))
+                if [[ $arg_diff -gt $param_diff ]]; then
+                    takes=$((arg_diff - param_diff + 1))
+                else
+                    takes=1
+                fi
+            fi
+        else
+            takes=1
+        fi
+        _argc_match_positionals_values+=("$arg_index:$takes")
+        arg_index=$((arg_index + takes))
+        param_index=$((param_index + 1))
+    done
+    if [[ $arg_index -lt $args_len ]]; then
+        _argc_match_positionals_values+=("$arg_index:$((args_len - arg_index))")
+    fi
+    _argc_match_positionals_len=${#_argc_match_positionals_values[@]}
+    if [[ $params_len -gt 0 ]] && [[ $_argc_match_positionals_len -gt $params_len ]]; then
+        local index="${_argc_match_positionals_values[params_len]%%:*}"
+        _argc_die "error: unexpected argument \`${argc__positionals[index]}\` found"
+    fi
+}
+
+_argc_maybe_flag_option() {
+    local signs="$1" arg="$2"
+    if [[ -z "$signs" ]]; then
+        return 1
+    fi
+    local cond=false
+    if [[ "$signs" == *"+"* ]]; then
+        if [[ "$arg" =~ ^\+[^+].* ]]; then
+            cond=true
+        fi
+    elif [[ "$arg" == -* ]]; then
+        if ((${#arg} < 3)) || [[ ! "$arg" =~ ^---.* ]]; then
+            cond=true
+        fi
+    fi
+    if [[ "$cond" == "false" ]]; then
+        return 1
+    fi
+    local value="${arg%%=*}"
+    if [[ "$value" =~ [[:space:]] ]]; then
+        return 1
+    fi
+    return 0
+}
+
+_argc_require_tools() {
+    local tool missing_tools=()
+    for tool in "$@"; do
+        if ! command -v "$tool" >/dev/null 2>&1; then
+            missing_tools+=("$tool")
+        fi
+    done
+    if [[ "${#missing_tools[@]}" -gt 0 ]]; then
+        echo "error: missing tools: ${missing_tools[*]}" >&2
+        exit 1
+    fi
+}
+
+_argc_die() {
+    if [[ $# -eq 0 ]]; then
+        cat
+    else
+        echo "$*" >&2
+    fi
+    exit 1
+}
+
+_argc_run "$@"
+
+# ARGC-BUILD }

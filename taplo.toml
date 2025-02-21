@@ -1,0 +1,6 @@
+## https://taplo.tamasfe.dev/configuration/file.html
+
+[formatting]
+array_auto_collapse = false
+indent_string = '    '
+allowed_blank_lines = 1
