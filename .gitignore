@@ -1,2 +1,4 @@
 ### Local ###
-/target/
+/bin/
+/build/
+/dist/

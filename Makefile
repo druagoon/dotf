@@ -4,17 +4,30 @@ SHELL := bash
 
 # BASE_DIR := $(shell cd "`dirname "$0"`" >/dev/null 2>&1 && pwd)
 
-##@ Project
+##@ Build
 
-.PHONY: motto
-motto: ## Show motto
-	@if [[ -f .motto ]]; then cat .motto; fi
+.PHONY: clean
+clean: ## Clean up
+	@argc clean
 
-##@ Cli
+.PHONY: build
+build: ## Compile and build binaries
+	@argc build
 
-.PHONY: dotf
-dotf: ## Build `dotf` cli
-	@argc release
+.PHONY: dist
+dist: ## Distribute binaries
+	@argc dist
+
+##@ Test
+
+.PHONY: test
+test: ## Test binaries
+	@argc test
+
+##@ Release
+
+.PHONY: release
+release: clean build test dist ## Release binaries
 
 ##@ General
 

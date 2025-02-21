@@ -1,5 +1,17 @@
 #!/usr/bin/env bash
 
+# @describe `dotf` is a lightweight and flexible CLI tool written in Bash for managing dotfiles efficiently.
+#
+#      _       _    __
+#   __| | ___ | |_ / _|
+#  / _` |/ _ \| __| |_
+# | (_| | (_) | |_|  _|
+#  \__,_|\___/ \__|_|
+#
+# @meta version ${version}
+# @meta require-tools sed
+# @meta inherit-flag-options
+
 set -e
 
 include "lib/std/bool.sh"

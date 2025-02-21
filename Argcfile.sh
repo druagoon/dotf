@@ -1,80 +1,65 @@
 #!/usr/bin/env bash
 
+# @describe Manage `dotf` project
+# @meta require-tools awk,sed,shfmt
+
 set -e
 
-# @describe Generate and build the dotf script
-# @meta version 0.1.0
-# @meta author lazyboy <lazyboy.fan@gmail.com>
-# @meta require-tools shfmt,taplo,icli
-
 # Project
-# BASE_DIR="$(cd "$(dirname "$(realpath "${BASH_SOURCE[0]}")")" >/dev/null 2>&1 && pwd)"
 NAME="dotf"
+VERSION="0.1.0"
+TAG="v${VERSION}"
+
+# BASE_DIR="$(cd "$(dirname "$(realpath "${BASH_SOURCE[0]}")")" >/dev/null 2>&1 && pwd)"
 BASE_DIR="${ARGC_PWD}"
+CONTRIB_DIR="${BASE_DIR}/contrib"
+COMP_DIR="${CONTRIB_DIR}/completions"
+
 SRC_DIR="${BASE_DIR}/src"
 SRC_MAIN="${SRC_DIR}/main.sh"
-TARGET_DIR="${BASE_DIR}/target"
-TARGET_CLI="${TARGET_DIR}/${NAME}"
+BUILD_DIR="${BASE_DIR}/build"
+BUILD_TARGET="${BUILD_DIR}/${NAME}.sh"
+DIST_DIR="${BASE_DIR}/dist"
+DIST_TARGET="${DIST_DIR}/${NAME}"
 
-# Dotfiles
-DOTFILES_ROOT="${HOME}/.dotfiles"
-DOTFILES_PKG_ROOT="${DOTFILES_ROOT}/packages"
-DOTF_FILE="${DOTFILES_ROOT}/${NAME}"
-DOTF_COMP="${DOTFILES_PKG_ROOT}/${NAME}/.oh-my-zsh/custom/completions/_${NAME}"
-
-# Link
-LINK_TARGET="${HOME}/.local/bin/${NAME}"
+# Define the path to the AWK script used for shell inclusion.
+# The script is located in the base directory and is named 'shinc.awk'.
+SHINC_AWK="${BASE_DIR}/shinc.awk"
 
 # Tools
 SHFMT_OPTS="-ln=auto -i 4 -ci -bn -w"
+
+OS="$(uname)"
+if [[ "${OS}" == "Darwin" ]]; then
+    SED="gsed"
+elif [[ "${OS}" == "Linux" ]]; then
+    SED="sed"
+else
+    echo "Unsupported OS: ${OS}" >&2
+    exit 1
+fi
+
+ensure_dir() {
+    for dir in "$@"; do
+        if [[ ! -d "${dir}" ]]; then
+            mkdir -p "${dir}"
+        fi
+    done
+}
 
 fmt_shell() {
     shfmt ${SHFMT_OPTS} "$@"
 }
 
-# # @cmd Generate executable bash script
-# # @meta require-tools gawk
-# generate() {
-#     local temp="${TARGET_DIR}/main.sed"
-#     gawk -v src_dir="${SRC_DIR}" '
-#         match($0, /^include "(.+?)"/, r) {
-#             gsub(/(^ +)|( +$)/, "", r[1])
-#             printf "%s r %s/%s\n", FNR, src_dir, r[1]
-#         }
-#     ' "${SRC_MAIN}" >"${temp}"
-#     if [[ ! -d "${TARGET_DIR}" ]]; then
-#         mkdir -p "${TARGET_DIR}"
-#     fi
-#     sed -f "${temp}" "${SRC_MAIN}" >"${TARGET_CLI}"
-#     _fmt "${TARGET_CLI}"
-#     chmod +x "${TARGET_CLI}"
-
-#     # Build
-#     argc --argc-build "${TARGET_CLI}" "${DOTF_FILE}"
-#     _fmt "${DOTF_FILE}"
-#     chmod +x "${DOTF_FILE}"
-# }
-
-# @cmd Generate and build bash script without the argc dependency
-build() {
-    icli shinc build -vv
-    fmt::target
-    cp -v "${TARGET_CLI}" "${DOTF_FILE}"
-}
-
-# @cmd Manage dotf cli completions
-completions() {
-    return
-}
-
-# @cmd Generate dotf cli zsh completions
-completions::generate() {
-    icli shinc completion zsh >"${DOTF_COMP}"
-    fmt_shell "${DOTF_COMP}"
+generate_completions() {
+    argc --argc-completions bash "${NAME}" >"${COMP_DIR}/bash/${NAME}"
+    argc --argc-completions fish "${NAME}" >"${COMP_DIR}/fish/${NAME}.fish"
+    local comp_zsh="${COMP_DIR}/zsh/_${NAME}"
+    argc --argc-completions zsh "${NAME}" >"${comp_zsh}"
     # Detect and insert the `#compdef` line if it doesn't exist for zsh completions autoloading
-    gsed -i '1{/^#compdef /!i\
+    ${SED} -i '1{/^#compdef /!i\
 #compdef argc '"${NAME}"'\n
-}' "${DOTF_COMP}"
+}' "${comp_zsh}"
 }
 
 # @cmd Format shell scripts
@@ -87,22 +72,13 @@ fmt::src() {
     fmt_shell "${SRC_DIR}"
 }
 
-# @cmd Format shell scripts in `./target`
-fmt::target() {
-    fmt_shell "${TARGET_DIR}"
-}
-
-# @cmd Format shell scripts in `./packages`
-fmt::pkg() {
-    fmt_shell "${DOTFILES_PKG_ROOT}"
-}
-
 # @cmd Format shell scripts in current directory
 fmt::all() {
     fmt_shell .
 }
 
 # @cmd TOML files tools
+# @meta require-tools taplo
 toml() {
     return
 }
@@ -117,22 +93,73 @@ toml::check() {
     taplo format --check
 }
 
-# # @cmd Crate symbolic link for dotf
-# link() {
-#     ln -sfv "${DOTF_FILE}" "${LINK_TARGET}"
-# }
+# @cmd Compile and build binaries
+build() {
+    # Format the shell scripts in the source directory before building
+    fmt::src
 
-# # @cmd Remove the symbolic link of dotf
-# unlink() {
-#     rm -f "${LINK_TARGET}"
-# }
+    # Compile source
+    cd "${SRC_DIR}" || exit
+    ensure_dir "${BUILD_DIR}" "${DIST_DIR}"
+    awk -v version="${VERSION}" -f "${SHINC_AWK}" "${SRC_MAIN}" >"${BUILD_TARGET}"
+    chmod +x "${BUILD_TARGET}"
+    fmt_shell "${BUILD_TARGET}"
 
-# @cmd Build and release the dotf script and make symbolic link
-# @meta require-tools gawk,sed,shfmt
-release() {
-    build
-    completions::generate
-    # link
+    # Build without argc dependency
+    argc --argc-build "${BUILD_TARGET}" "${DIST_TARGET}"
+    fmt_shell "${DIST_TARGET}"
+    chmod +x "${DIST_TARGET}"
+
+    # Generate shell completions
+    generate_completions
+}
+
+# @cmd Test binaries
+test() {
+    ${DIST_TARGET} --version
+}
+
+# @cmd Pre-release (bump version, update CHANGELOG, and create a tag)
+# @meta require-tools git
+# @arg version!                 Version number
+prerelease() {
+    local version="${argc_version}"
+    local tag="v${version}"
+    if git rev-parse "${tag}" >/dev/null 2>&1; then
+        echo "tag already exists: ${tag}" >&2
+        exit 1
+    fi
+    echo "version: ${version}"
+    echo "tag: ${tag}"
+    local argc_file="Argcfile.sh"
+    local changelog="CHANGELOG.md"
+    ${SED} -i 's/^VERSION="[0-9]\+\.[0-9]\+\.[0-9]\+"$/VERSION="'"${version}"'"/' "${argc_file}"
+    git add "${argc_file}"
+    git cliff -o "${changelog}" -t "${tag}"
+    git add "${changelog}"
+    git commit -m "chore: Release ${tag}"
+    git tag -a -m "chore: Release ${tag}" "${tag}"
+}
+
+# @cmd Distribute binaries
+dist() {
+    if [[ ! -f ${DIST_TARGET} ]]; then
+        echo "Binary not found: ${DIST_TARGET}" >&2
+        exit 1
+    fi
+    ensure_dir "${DIST_DIR}" bin
+    cp -v "${DIST_TARGET}" bin/
+    local name="${NAME}-${TAG}.tar.gz"
+    local fullname="${DIST_DIR}/${name}"
+    echo "Archive to: ${fullname}"
+    tar -cvzf "${fullname}" README.md LICENSE bin/ contrib/
+    rm -rf bin/
+    cd "${DIST_DIR}" && sha256sum "${name}" >"${name}.sha256"
+}
+
+# @cmd Clean up
+clean() {
+    rm -rf "${BUILD_DIR}" "${DIST_DIR}"
 }
 
 # See more details at https://github.com/sigoden/argc
