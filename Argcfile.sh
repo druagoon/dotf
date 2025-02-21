@@ -7,7 +7,7 @@ set -e
 
 # Project
 NAME="dotf"
-VERSION="0.1.0"
+VERSION="1.0.0"
 TAG="v${VERSION}"
 
 # BASE_DIR="$(cd "$(dirname "$(realpath "${BASH_SOURCE[0]}")")" >/dev/null 2>&1 && pwd)"
