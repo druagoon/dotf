@@ -1,22 +1,25 @@
 std::path::dir::ensure() {
-    local dir="$1"
-    if [[ ! -d "$dir" ]]; then
-        mkdir -p "$dir"
-    fi
+    for dir in "$@"; do
+        if [[ ! -d "${dir}" ]]; then
+            mkdir -p "${dir}"
+        fi
+    done
 }
 
 std::path::file::ensure() {
-    local file="$1"
-    if [[ ! -f "${file}" ]]; then
-        touch "$file"
-    fi
+    for file in "$@"; do
+        if [[ ! -e "${file}" ]]; then
+            touch "${file}"
+        fi
+    done
 }
 
 std::path::file::ensure_dir() {
-    local file="$1"
-    if [[ ! -f "${file}" ]]; then
-        local dir="$(dirname "$file")"
-        std::path::dir::ensure "$dir"
-        touch "$file"
-    fi
+    for file in "$@"; do
+        if [[ ! -e "${file}" ]]; then
+            local dir="$(dirname "$file")"
+            std::path::dir::ensure "${dir}"
+            touch "${file}"
+        fi
+    done
 }
