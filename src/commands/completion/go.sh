@@ -3,11 +3,11 @@
 # Examples:
 #   dotf completion go
 #
-# @meta require-tools wget
+# @meta require-tools curl
 completion::go() {
     local source="https://github.com/zsh-users/zsh-completions/raw/master/src/_golang"
     local comp_dir="$(dotf::pkg::completions::dir go)"
     std::path::dir::ensure "${comp_dir}"
     local target="${comp_dir}/_golang"
-    wget -q -O "${target}" "${source}"
+    curl -fsSL -o "${target}" "${source}"
 }
