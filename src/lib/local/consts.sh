@@ -3,7 +3,7 @@ DF_ROOT="${DOTFILES_ROOT:-${HOME}/.dotfiles}"
 DF_PKG_ROOT="${DF_ROOT}/packages"
 
 ## Plugin
-DF_OMZ_PLUGIN_PREFIX="dotf"
+DF_OMZ_PLUGIN_PREFIX="dotf-"
 
 dotf::pkg::dir::get() {
     local name="$1"

@@ -1,9 +1,10 @@
 # @cmd Create a new dotfiles package
 # @arg name!
-# @option    --omz-plugin-name <NAME>       Name of the oh-my-zsh plugin
-# @flag    --no-omz-plugins                 Do not create oh-my-zsh plugins directory
-# @flag    --no-omz-functions               Do not create oh-my-zsh functions directory
-# @flag    --no-omz-completions             Do not create oh-my-zsh completions directory
+# @option    --omz-plugin-name <NAME>               Name of the oh-my-zsh plugin
+# @flag    --no-omz-plugin-prefix                   Do not use the default oh-my-zsh plugin prefix
+# @flag    --no-omz-plugins                         Do not create oh-my-zsh plugins directory
+# @flag    --no-omz-functions                       Do not create oh-my-zsh functions directory
+# @flag    --no-omz-completions                     Do not create oh-my-zsh completions directory
 package::new() {
     local name="${argc_name}"
     local pkg_dir="$(dotf::pkg::dir::get "${name}")"
@@ -17,7 +18,10 @@ package::new() {
         std::path::dir::ensure "${pkg_omz_custom_dir}/functions"
     fi
     if std::bool::is_false "${argc_no_omz_plugins}"; then
-        local pkg_omz_plugin_name="${argc_omz_plugin_name:-"${DF_OMZ_PLUGIN_PREFIX}-${name}"}"
+        local pkg_omz_plugin_name="${argc_omz_plugin_name:-"${name}"}"
+        if std::bool::is_false "${argc_no_omz_plugin_prefix}"; then
+            pkg_omz_plugin_name="${DF_OMZ_PLUGIN_PREFIX}${pkg_omz_plugin_name}"
+        fi
         local pkg_omz_plugin_dir="${pkg_omz_custom_dir}/plugins/${pkg_omz_plugin_name}"
         std::path::dir::ensure "${pkg_omz_plugin_dir}/bin"
 
