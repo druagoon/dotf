@@ -4,5 +4,5 @@
 #   dotf brewfile generate
 #
 brewfile::generate() {
-    cd "${DOTF_PKG_BREW_DIR}" && brew bundle dump --describe --force
+    cd "${DF_PKG_BREW_DIR}" && brew bundle dump --describe --force
 }

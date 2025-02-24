@@ -6,7 +6,7 @@
 #
 # @meta require-tools git
 # @option -s --source           Read layouts from the file
-# @option    --layout           Read layouts from ${DOTF_OS_LAYOUT_DIR} directory
+# @option    --layout           Read layouts from ${DF_OS_LAYOUT_DIR} directory
 # @flag   -n --dry-run          Show what layouts will be export (not actually run)
 layout::sync() {
     local source="${argc_source}"
@@ -15,7 +15,7 @@ layout::sync() {
 
     if [[ -z "${source}" ]]; then
         if [[ -n "${layout}" ]]; then
-            source="${DOTF_OS_LAYOUT_DIR}/${layout}"
+            source="${DF_OS_LAYOUT_DIR}/${layout}"
         else
             std::message::fatal "missing --source or --layout, please see --help for detail."
         fi

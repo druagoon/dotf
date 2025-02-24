@@ -7,7 +7,7 @@
 # @meta require-tools git
 # @arg path!                            Path of the git repository
 # @option -o --output <FILE>            Write layouts to file
-# @option    --layout <NAME>            Write layouts to file in ${DOTF_OS_LAYOUT_DIR} directory
+# @option    --layout <NAME>            Write layouts to file in ${DF_OS_LAYOUT_DIR} directory
 # @option    --max-depth=4 <NUMBER>     Maximum depth to locate git repository in the path
 # @flag   -n --dry-run                  Show what layouts will be export (not actually run)
 layout::export() {
@@ -19,7 +19,7 @@ layout::export() {
 
     if [[ -z "${output}" ]]; then
         if [[ -n "${layout}" ]]; then
-            output="${DOTF_OS_LAYOUT_DIR}/${layout}"
+            output="${DF_OS_LAYOUT_DIR}/${layout}"
         else
             std::message::fatal "missing --output or --layout, please see --help for detail."
         fi

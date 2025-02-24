@@ -29,16 +29,16 @@ dotf_link_stow() {
         IFS=" "
         echo "${argc_stow[*]}"
     )
-    stow ${opt} -d "${DOTF_LINK_STOW_SRC}" -t "${DOTF_LINK_STOW_TARGET}" "$@"
+    stow ${opt} -d "${DF_LINK_STOW_SRC}" -t "${DF_LINK_STOW_TARGET}" "$@"
 }
 
 dotf_link_pkg_is_exclude() {
-    [[ ":${DOTF_LINK_EXCLUDE_PKG_STRING}:" == *":$1:"* ]]
+    [[ ":${DF_LINK_EXCLUDE_PKG_STRING}:" == *":$1:"* ]]
 }
 
 dotf_link_stow_local_ignore() {
     local name="$1"
-    local pkg_dir="${DOTF_LINK_STOW_SRC}/${name}"
+    local pkg_dir="${DF_LINK_STOW_SRC}/${name}"
     local source="${pkg_dir}/.stow-local-ignore.inc"
     local target="${pkg_dir}/.stow-local-ignore"
 
@@ -83,7 +83,7 @@ dotf_link_make_deps() {
 }
 
 dotf_link_make_pkgs() {
-    find "${DOTF_LINK_STOW_SRC}" -maxdepth 1 -mindepth 1 -type d | sort | while read path; do
+    find "${DF_LINK_STOW_SRC}" -maxdepth 1 -mindepth 1 -type d | sort | while read path; do
         local name=$(basename "${path}")
         if ! dotf_link_pkg_is_exclude "${name}"; then
             dotf_link_stow_local_ignore "${name}"
