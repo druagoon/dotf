@@ -1,3 +1,3 @@
-std::command::check() {
+std::cmd::exists() {
     command -v "$1" >/dev/null 2>&1
 }
