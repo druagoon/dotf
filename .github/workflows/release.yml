@@ -14,24 +14,32 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
+      # Install `argc` for building binaries
       - uses: sigoden/install-binary@v1
         with:
           repo: sigoden/argc
           tag: v1.22.0
-      # shfmt for formatting shell scripts
+
+      # Install `shfmt` for formatting shell scripts
       - uses: sigoden/install-binary@v1
         with:
           repo: mvdan/sh
           tag: v3.10.0
           name: shfmt
+
       - name: Clean up
         run: argc clean
+
       - name: Compile and build binaries
         run: argc build
+
       - name: Test binaries
         run: argc test
+
       - name: Distribute binaries
         run: argc dist
+
       - name: Release
         uses: docker://antonyurchenko/git-release:v6
         env:
@@ -40,3 +48,21 @@ jobs:
           args: |
             dist/*.tar.gz
             dist/*.sha256
+
+      - name: Update Homebrew formula
+        uses: dawidd6/action-homebrew-bump-formula@v4
+        with:
+          # Required, custom GitHub access token with the 'public_repo' and 'workflow' scopes
+          token: ${{ secrets.HOMEBREW_GITHUB_API_TOKEN }}
+          # Optional, use the origin repository instead of forking
+          no_fork: true
+          # Optional, defaults to homebrew/core
+          tap: druagoon/homebrew-brew
+          # Formula name, required
+          formula: dotf
+          # Optional, will be determined automatically
+          # tag: ${{ github.ref }}
+          # Optional, will be determined automatically
+          # revision: ${{ github.sha }}
+          # Optional, if don't want to check for already open PRs
+          # force: false
