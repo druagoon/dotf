@@ -10,4 +10,5 @@ completion::go() {
     std::path::dir::ensure "${comp_dir}"
     local target="${comp_dir}/_golang"
     curl -fsSL -o "${target}" "${source}"
+    echo "Golang completions installed to: ${target}"
 }
