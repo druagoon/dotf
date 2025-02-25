@@ -1,10 +1,10 @@
 # @cmd Export the layout of the local git repository to a file
 #
 # Examples:
-#   dotf layout export ~/Code/github --layout github
-#   dotf layout export ~/Code/github --output ./github
+#   dotf layout export ~/Code/github --layout github.toml
+#   dotf layout export ~/Code/github --output ./github.toml
 #
-# @meta require-tools git
+# @meta require-tools git,gsed
 # @arg path!                            Path of the git repository
 # @option -o --output <FILE>            Write layouts to file
 # @option    --layout <NAME>            Write layouts to file in ${DF_OS_LAYOUT_DIR} directory
@@ -32,22 +32,24 @@ layout::export() {
         >"${output}"
     fi
 
-    local filedir
-    local url
-    local target
-    local line
     if std::bool::is_true "${dry_run}"; then
         std::message::warning "in simulation mode so not modifying filesystem."
     fi
-    find "${path}" -maxdepth "${max_depth}" -name ".git" ! -path '*/.local/*' | sort | while read filename; do
-        filedir=$(dirname "${filename}")
-        url="$(git -C "${filedir}" config --get remote.origin.url)"
-        target="${filedir/#${HOME}/\~}"
-        line="${target}\n    ${url}"
-        if std::bool::is_true "${dry_run}"; then
-            printf "${line}\n"
+    find "${path}" -maxdepth "${max_depth}" -type d -name ".git" \! -path '*/.local/*' | sort | while read filename; do
+        local filedir=$(dirname "${filename}")
+        local url="$(git -C "${filedir}" config --get remote.origin.url 2>/dev/null)"
+        if [[ -n "${url}" ]]; then
+            filedir="${filedir/#${HOME}/\~}"
+            local line="[[repository]]\npath = \"${filedir}\"\nurl = \"${url}\""
+            if std::bool::is_true "${dry_run}"; then
+                printf "${line}\n\n"
+            else
+                printf "${line}\n\n" >>"${output}"
+            fi
         else
-            printf "${line}\n" >>"${output}"
+            std::message::warning "No remote.origin.url found in: ${filedir}"
         fi
     done
+
+    gsed -i '${/^$/d}' "${output}"
 }

@@ -39,7 +39,7 @@ include "commands/link.sh"
 
 include "commands/layout/cli.sh"
 include "commands/layout/export.sh"
-include "commands/layout/sync.sh"
+include "commands/layout/import.sh"
 
 include "commands/package/cli.sh"
 include "commands/package/new.sh"

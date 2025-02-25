@@ -1,14 +1,14 @@
-# @cmd Sync the layout from a file
+# @cmd Import the layout from a file
 #
 # Examples:
-#   dotf layout sync --layout github
-#   dotf layout sync --source ./github
+#   dotf layout import --layout github.toml
+#   dotf layout import --source ./github.toml
 #
-# @meta require-tools git
+# @meta require-tools git,yq
 # @option -s --source           Read layouts from the file
 # @option    --layout           Read layouts from ${DF_OS_LAYOUT_DIR} directory
 # @flag   -n --dry-run          Show what layouts will be export (not actually run)
-layout::sync() {
+layout::import() {
     local source="${argc_source}"
     local layout="${argc_layout}"
     local dry_run="${argc_dry_run}"
@@ -27,15 +27,10 @@ layout::sync() {
     if std::bool::is_true "${dry_run}"; then
         std::message::warning "in simulation mode so not modifying filesystem."
     fi
-    readarray -t lines <"${source}"
-    set -f # avoid globbing (expansion of *).
-    local path
-    local url
+
     local msg
-    for i in $(seq 1 2 ${#lines[@]}); do
-        path="$(std::string::strip_whitespace "${lines[$i - 1]}")"
+    while IFS=$'\t' read -r path url; do
         path="${path/#\~/${HOME}}"
-        url="$(std::string::strip_whitespace "${lines[$i]}")"
         if [[ ! -d "${path}" ]]; then
             msg="git clone '${url}' to '${path}'"
             if std::bool::is_true "${dry_run}"; then
@@ -45,5 +40,5 @@ layout::sync() {
                 git clone "${url}" "${path}" && echo
             fi
         fi
-    done
+    done < <(yq -o=tsv '.repository[] | [.path, .url] | @tsv' "${source}")
 }
