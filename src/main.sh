@@ -28,6 +28,9 @@ include "lib/local/path.sh"
 include "commands/brewfile/cli.sh"
 include "commands/brewfile/generate.sh"
 
+include "commands/clipboard/cli.sh"
+include "commands/clipboard/parse.sh"
+
 include "commands/completion/cli.sh"
 include "commands/completion/go.sh"
 include "commands/completion/rust.sh"
