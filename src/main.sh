@@ -32,6 +32,8 @@ include "commands/completion/cli.sh"
 include "commands/completion/go.sh"
 include "commands/completion/rust.sh"
 
+include "commands/download.sh"
+
 include "commands/gitignore/cli.sh"
 include "commands/gitignore/generate.sh"
 
