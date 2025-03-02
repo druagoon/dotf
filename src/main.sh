@@ -11,6 +11,7 @@
 # @meta version ${version}
 # @meta require-tools sed
 # @meta inherit-flag-options
+# @flag -D --debug Enable debug mode
 
 set -e
 
@@ -48,3 +49,8 @@ include "commands/layout/import.sh"
 
 include "commands/package/cli.sh"
 include "commands/package/new.sh"
+
+include "hooks.sh"
+
+# See more details at https://github.com/sigoden/argc
+eval "$(argc --argc-eval "$0" "$@")"
