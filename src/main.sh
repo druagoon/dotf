@@ -14,6 +14,7 @@
 # @flag -D --debug Enable debug mode
 
 set -e
+set -o pipefail
 
 include "lib/std/bool.sh"
 include "lib/std/string.sh"
