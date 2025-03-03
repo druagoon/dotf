@@ -1,0 +1,57 @@
+.TH DOTF-CLIPBOARD-PARSE 1  "dotf-clipboard-parse 0.0.0" 
+.SH NAME
+dotf\-clipboard\-parse \- Parse the clipboard content
+.SH SYNOPSIS
+\fBdotf clipboard parse\fR [OPTIONS]
+.SH DESCRIPTION
+.br
+Parse the clipboard content
+.br
+
+.br
+Examples:
+.br
+  dotf clipboard parse \-\-json
+.br
+  dotf clipboard parse \-\-base64\-decode \-\-json
+.br
+  dotf clipboard parse \-\-base64\-decode \-\-json \-\-copy
+.br
+  dotf clipboard parse \-\-base64\-decode \-\-json \-\-sort\-key
+.SH OPTIONS
+.TP
+\fB\-D\fR, \fB\-\-debug\fR
+.br
+Enable debug mode
+.TP
+\fB\-\-base64\-decode\fR
+.br
+Decode the clipboard content as base64
+.TP
+\fB\-\-json\fR
+.br
+Parse the clipboard content as JSON
+.TP
+\fB\-\-yaml\fR
+.br
+Parse the clipboard content as YAML
+.TP
+\fB\-\-sort\-key\fR
+.br
+Sort the keys of the output
+.TP
+\fB\-\-no\-pretty\fR
+.br
+Do not pretty print the output
+.TP
+\fB\-\-copy\fR
+.br
+Copy the parsed content to the clipboard
+.TP
+\fB\-\-indent\fR=\fINUMBER\fR
+.br
+Set the number of spaces to indent the output (Only for json)
+.TP
+\fB\-h\fR, \fB\-\-help\fR
+.br
+Print help

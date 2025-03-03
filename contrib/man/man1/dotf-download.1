@@ -1,0 +1,33 @@
+.TH DOTF-DOWNLOAD 1  "dotf-download 0.0.0" 
+.SH NAME
+dotf\-download \- Download a file using curl
+.SH SYNOPSIS
+\fBdotf download\fR [OPTIONS] <URL>
+.SH DESCRIPTION
+.br
+Download a file using curl
+.br
+
+.br
+Examples:
+.br
+  dotf download https://github.com/druagoon/dotf/releases/download/v1.1.0/dotf\-v1.1.0.tar.gz
+.br
+  dotf download \-o output/dotf\-v1.1.0.tar.gz https://github.com/druagoon/dotf/releases/download/v1.1.0/dotf\-v1.1.0.tar.gz
+.SH OPTIONS
+.TP
+\fB\-D\fR, \fB\-\-debug\fR
+.br
+Enable debug mode
+.TP
+\fB\-o\fR, \fB\-\-output\fR=\fIFILE\fR
+.br
+Write output to <FILE> instead of the remote name (If the URL has no path, the file will not be saved)
+.TP
+\fB\-h\fR, \fB\-\-help\fR
+.br
+Print help
+.TP
+<\fIURL\fR>
+.br
+The URL to download

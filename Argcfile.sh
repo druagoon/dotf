@@ -2,6 +2,8 @@
 
 # @describe Manage `dotf` project
 # @meta require-tools awk,sed,shfmt
+# @meta inherit-flag-options
+# @flag -D --debug Enable debug mode
 
 set -e
 
@@ -14,6 +16,8 @@ TAG="v${VERSION}"
 BASE_DIR="${ARGC_PWD}"
 CONTRIB_DIR="${BASE_DIR}/contrib"
 COMP_DIR="${CONTRIB_DIR}/completions"
+MAN_DIR="${CONTRIB_DIR}/man"
+MAN1_DIR="${MAN_DIR}/man1"
 
 SRC_DIR="${BASE_DIR}/src"
 SRC_MAIN="${SRC_DIR}/main.sh"
@@ -71,6 +75,10 @@ generate_completions() {
 }' "${comp_zsh}"
 }
 
+generate_man_pages() {
+    argc --argc-mangen "${BUILD_TARGET}" "${MAN1_DIR}"
+}
+
 # @cmd Format shell scripts
 fmt() {
     return
@@ -123,6 +131,9 @@ build() {
 
     hai "Generate shell completions"
     generate_completions
+
+    hai "Generate man pages"
+    generate_man_pages
 }
 
 # @cmd Test binaries
@@ -192,6 +203,14 @@ clean() {
         "${DIST_DIR}"
     )
     rm -rf "${dirs[@]}"
+}
+
+# Hooks
+_argc_before() {
+    if [[ "${argc_debug}" == "1" ]]; then
+        echo "hahahahaha"
+        set -x
+    fi
 }
 
 # See more details at https://github.com/sigoden/argc

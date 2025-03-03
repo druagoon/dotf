@@ -1,0 +1,28 @@
+.TH DOTF-LAYOUT 1  "dotf-layout 0.0.0" 
+.SH NAME
+dotf\-layout \- Manage the layout of the local git repository
+.SH SYNOPSIS
+\fBdotf layout\fR [OPTIONS] <COMMAND>
+.SH OPTIONS
+.TP
+\fB\-D\fR, \fB\-\-debug\fR
+.br
+Enable debug mode
+.TP
+\fB\-h\fR, \fB\-\-help\fR
+
+.SH SUBCOMMANDS
+.TP
+dotf\-layout\-export(1)
+Export the layout of the local git repository to a file
+
+Examples:
+  dotf layout export ~/Code/github \-\-layout github.toml
+  dotf layout export ~/Code/github \-\-output ./github.toml
+.TP
+dotf\-layout\-import(1)
+Import the layout from a file
+
+Examples:
+  dotf layout import \-\-layout github.toml
+  dotf layout import \-\-source ./github.toml

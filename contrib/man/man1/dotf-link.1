@@ -1,0 +1,37 @@
+.TH DOTF-LINK 1  "dotf-link 0.0.0" 
+.SH NAME
+dotf\-link \- Create symbolic links for dotfiles packages
+.SH SYNOPSIS
+\fBdotf link\fR [OPTIONS] [STOW]...
+.SH DESCRIPTION
+.br
+Create symbolic links for dotfiles packages
+.br
+
+.br
+Examples:
+.br
+  dotf link \-\- \-v
+.br
+  dotf link \-\- \-v \-n
+.br
+  dotf link \-\- \-v \-n \-\-adopt
+.br
+  dotf link \-\-regenerate\-stow\-local\-ignore \-\- \-v \-n
+.SH OPTIONS
+.TP
+\fB\-D\fR, \fB\-\-debug\fR
+.br
+Enable debug mode
+.TP
+\fB\-\-regenerate\-stow\-local\-ignore\fR
+.br
+regenerate the .stow\-local\-ignore file for each package
+.TP
+\fB\-h\fR, \fB\-\-help\fR
+.br
+Print help
+.TP
+[\fISTOW\fR]...
+.br
+capture all remaining options for stow

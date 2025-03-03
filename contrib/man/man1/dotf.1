@@ -1,0 +1,70 @@
+.TH DOTF 1  "dotf 1.1.0" 
+.SH NAME
+dotf \- `dotf` is a lightweight and flexible CLI tool written in Bash for managing dotfiles efficiently.
+.SH SYNOPSIS
+\fBdotf\fR [OPTIONS] <COMMAND>
+.SH DESCRIPTION
+.br
+`dotf` is a lightweight and flexible CLI tool written in Bash for managing dotfiles efficiently.
+.br
+
+.br
+     _       _    __
+.br
+  __| | ___ | |_ / _|
+.br
+ / _` |/ _ \\| __| |_
+.br
+| (_| | (_) | |_|  _|
+.br
+ \\__,_|\\___/ \\__|_|
+.SH OPTIONS
+.TP
+\fB\-D\fR, \fB\-\-debug\fR
+.br
+Enable debug mode
+.TP
+\fB\-h\fR, \fB\-\-help\fR
+.br
+Print help
+.TP
+\fB\-V\fR, \fB\-\-version\fR
+.br
+Print version
+.SH SUBCOMMANDS
+.TP
+dotf\-brewfile(1)
+Manage brewfile
+.TP
+dotf\-clipboard(1)
+Manage clipboard
+.TP
+dotf\-completion(1)
+Manage package command completions
+.TP
+dotf\-download(1)
+Download a file using curl
+
+Examples:
+  dotf download https://github.com/druagoon/dotf/releases/download/v1.1.0/dotf\-v1.1.0.tar.gz
+  dotf download \-o output/dotf\-v1.1.0.tar.gz https://github.com/druagoon/dotf/releases/download/v1.1.0/dotf\-v1.1.0.tar.gz
+.TP
+dotf\-gitignore(1)
+Manage gitignore files
+.TP
+dotf\-link(1)
+Create symbolic links for dotfiles packages
+
+Examples:
+  dotf link \-\- \-v
+  dotf link \-\- \-v \-n
+  dotf link \-\- \-v \-n \-\-adopt
+  dotf link \-\-regenerate\-stow\-local\-ignore \-\- \-v \-n
+.TP
+dotf\-layout(1)
+Manage the layout of the local git repository
+.TP
+dotf\-package(1)
+Manage dotfiles package
+.SH VERSION
+1.1.0

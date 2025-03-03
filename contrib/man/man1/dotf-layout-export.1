@@ -1,0 +1,45 @@
+.TH DOTF-LAYOUT-EXPORT 1  "dotf-layout-export 0.0.0" 
+.SH NAME
+dotf\-layout\-export \- Export the layout of the local git repository to a file
+.SH SYNOPSIS
+\fBdotf layout export\fR [OPTIONS] <PATH>
+.SH DESCRIPTION
+.br
+Export the layout of the local git repository to a file
+.br
+
+.br
+Examples:
+.br
+  dotf layout export ~/Code/github \-\-layout github.toml
+.br
+  dotf layout export ~/Code/github \-\-output ./github.toml
+.SH OPTIONS
+.TP
+\fB\-D\fR, \fB\-\-debug\fR
+.br
+Enable debug mode
+.TP
+\fB\-o\fR, \fB\-\-output\fR=\fIFILE\fR
+.br
+Write layouts to file
+.TP
+\fB\-\-layout\fR=\fINAME\fR
+.br
+Write layouts to file in ${DF_OS_LAYOUT_DIR} directory
+.TP
+\fB\-\-max\-depth\fR=\fINUMBER\fR [default: 4]
+.br
+Maximum depth to locate git repository in the path
+.TP
+\fB\-n\fR, \fB\-\-dry\-run\fR
+.br
+Show what layouts will be export (not actually run)
+.TP
+\fB\-h\fR, \fB\-\-help\fR
+.br
+Print help
+.TP
+<\fIPATH\fR>
+.br
+Path of the git repository
