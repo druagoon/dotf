@@ -10,8 +10,7 @@
 # @flag    --regenerate-stow-local-ignore           regenerate the .stow-local-ignore file for each package
 # @arg stow*                                        capture all remaining options for stow
 link() {
-    dotf_link_make_deps
-    dotf_link_make_pkgs
+    dotf_link_packages
 }
 
 dotf_link_stow_log() {
@@ -24,16 +23,14 @@ dotf_link_stow_log() {
     printf "%-12s [ %s ]\n" "$1" "${result}"
 }
 
-dotf_link_stow() {
-    local opt=$(
-        IFS=" "
-        echo "${argc_stow[*]}"
-    )
-    stow ${opt} -d "${DF_LINK_STOW_SRC}" -t "${DF_LINK_STOW_TARGET}" "$@"
+dotf_link_stow_symlink() {
+    local opts=("${argc_stow[@]:-}")
+    stow "${opts[@]}" -d "${DF_LINK_STOW_SRC}" -t "${DF_LINK_STOW_TARGET}" "$@"
 }
 
-dotf_link_pkg_is_exclude() {
-    [[ ":${DF_LINK_EXCLUDE_PKG_STRING}:" == *":$1:"* ]]
+dotf_link_is_exclude_pkg() {
+    local name="$1"
+    [[ "${name}" == "stow" ]] || [[ "${name}" == "."* ]]
 }
 
 dotf_link_stow_local_ignore() {
@@ -45,7 +42,7 @@ dotf_link_stow_local_ignore() {
     if [[ ! -f "${source}" ]]; then
         return
     fi
-    if [[ -f "${target}" ]] && std::bool::is_false "${argc_regenerate_stow_local_ignore}"; then
+    if [[ -f "${target}" ]] && std::bool::is_false "${argc_regenerate_stow_local_ignore:-}"; then
         return
     fi
 
@@ -56,7 +53,7 @@ dotf_link_stow_local_ignore() {
         {
             print $0;
             if (NF == 2 && $1 == "#include") {
-                sub("~", "'"$HOME"'", $2);
+                sub("~", "'"${HOME}"'", $2);
                 while ((getline line < $2) > 0)
                     print line
                 close($2)
@@ -65,30 +62,21 @@ dotf_link_stow_local_ignore() {
     ' "${source}" >"${target}"
 }
 
-dotf_link_make_deps() {
-    local deps=(
-        stow
-        zsh
-        brew
-        rust
-        go
-        conda
-        python
-    )
-    for v in "${deps[@]}"; do
-        dotf_link_stow_local_ignore "$v"
-        dotf_link_stow "$v"
-        dotf_link_stow_log "$v"
-    done
+dotf_link_pkg() {
+    local name="$1"
+    dotf_link_stow_local_ignore "${name}"
+    dotf_link_stow_symlink "${name}"
+    dotf_link_stow_log "${name}"
 }
 
-dotf_link_make_pkgs() {
-    find "${DF_LINK_STOW_SRC}" -maxdepth 1 -mindepth 1 -type d | sort | while read path; do
-        local name=$(basename "${path}")
-        if ! dotf_link_pkg_is_exclude "${name}"; then
-            dotf_link_stow_local_ignore "${name}"
-            dotf_link_stow "${name}"
-            dotf_link_stow_log "${name}"
+dotf_link_packages() {
+    # Link `stow` first in order to set up the .stow-local-ignore file
+    dotf_link_pkg "stow"
+
+    find "${DF_LINK_STOW_SRC}" -maxdepth 1 -mindepth 1 -type d | sort | while read -r path; do
+        local name="${path##*/}"
+        if ! dotf_link_is_exclude_pkg "${name}"; then
+            dotf_link_pkg "${name}"
         fi
     done
 }

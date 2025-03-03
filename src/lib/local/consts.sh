@@ -22,11 +22,6 @@ DF_OS_LAYOUT_DIR="$(dotf::pkg::dir::get "os/layouts")"
 ## Link
 DF_LINK_STOW_SRC="${DF_PKG_ROOT}"
 DF_LINK_STOW_TARGET="${HOME}"
-DF_LINK_EXCLUDE_PKG=(.git .venv .vscode)
-DF_LINK_EXCLUDE_PKG_STRING="$(
-    IFS=":"
-    echo "${DF_LINK_EXCLUDE_PKG[*]}"
-)"
 
 ## Brew
 DF_PKG_BREW_DIR="$(dotf::pkg::dir::get brew)"
