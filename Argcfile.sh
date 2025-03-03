@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 # @describe Manage `dotf` project
-# @meta version 1.1.0
+# @meta version 1.2.0
 # @meta require-tools awk,sed,shfmt
 # @meta inherit-flag-options
 # @flag -D --debug Enable debug mode
@@ -10,7 +10,7 @@ set -e
 
 # Project
 NAME="dotf"
-VERSION="1.1.0"
+VERSION="1.2.0"
 TAG="v${VERSION}"
 
 # BASE_DIR="$(cd "$(dirname "$(realpath "${BASH_SOURCE[0]}")")" >/dev/null 2>&1 && pwd)"

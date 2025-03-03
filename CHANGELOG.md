@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.0] - 2025-03-03
+
+### Added
+
+- *(build)* Synchronize and update the version number of Argcfile.sh during the pre-release phase ([7e7f6ba](https://github.com/druagoon/dotf/commit/7e7f6bace7a40ee6d42d33b0f9ab952db0b5eac2))
+- *(man)* Add man pages for dotf commands with debug option ([527c8aa](https://github.com/druagoon/dotf/commit/527c8aa8eb8b38a2754c75e182da0e600a32ca69))
+- *(main)* Add debug mode flag and enable debug output ([3d3a4ba](https://github.com/druagoon/dotf/commit/3d3a4ba0fd585d86fd067d8205630ed77a98bb04))
+- *(clipboard)* Add clipboard management and parsing commands ([a2af31a](https://github.com/druagoon/dotf/commit/a2af31ab0228580eeb15c523d92686dd11819ace))
+- *(download)* Add download command using `curl` ([8fe60cd](https://github.com/druagoon/dotf/commit/8fe60cd997bfdc9d93c6765dbf5c3442566f23db))
+
 ## [1.1.0] - 2025-02-25
 
 ### Added
@@ -29,6 +39,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 Initial release
 
+[1.2.0]: https://github.com/druagoon/dotf/compare/v1.1.0..v1.2.0
 [1.1.0]: https://github.com/druagoon/dotf/compare/v1.0.0..v1.1.0
 [1.0.0]: https://github.com/druagoon/dotf/releases/tag/v1.0.0
 
