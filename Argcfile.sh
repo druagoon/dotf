@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 
 # @describe Manage `dotf` project
+# @meta version 1.1.0
 # @meta require-tools awk,sed,shfmt
 # @meta inherit-flag-options
 # @flag -D --debug Enable debug mode
@@ -160,7 +161,10 @@ prerelease() {
     hai "Tag: ${tag}"
     hai "Update version"
     local argc_file="Argcfile.sh"
-    ${SED} -i 's/^VERSION="[0-9]\+\.[0-9]\+\.[0-9]\+"$/VERSION="'"${version}"'"/' "${argc_file}"
+    ${SED} -i -E \
+        -e 's/^(VERSION)="[0-9]+\.[0-9]+\.[0-9]+"$/\1="'"${version}"'"/' \
+        -e 's/^(# @meta version )[0-9]+\.[0-9]+\.[0-9]+$/\1'"${version}"'/' \
+        "${argc_file}"
     git add "${argc_file}"
 
     hai "Update CHANGELOG"
