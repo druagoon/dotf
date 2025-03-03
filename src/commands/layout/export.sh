@@ -5,11 +5,11 @@
 #   dotf layout export ~/Code/github --output ./github.toml
 #
 # @meta require-tools git,gsed
-# @arg path!                            Path of the git repository
+# @flag   -n --dry-run                  Show what layouts will be export (not actually run)
 # @option -o --output <FILE>            Write layouts to file
 # @option    --layout <NAME>            Write layouts to file in ${DF_OS_LAYOUT_DIR} directory
 # @option    --max-depth=4 <NUMBER>     Maximum depth to locate git repository in the path
-# @flag   -n --dry-run                  Show what layouts will be export (not actually run)
+# @arg path!                            Path of the git repository
 layout::export() {
     local path="${argc_path%/}"
     local output="${argc_output}"

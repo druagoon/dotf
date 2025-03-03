@@ -5,9 +5,9 @@
 #   dotf layout import --source ./github.toml
 #
 # @meta require-tools git,yq
+# @flag   -n --dry-run          Show what layouts will be export (not actually run)
 # @option -s --source           Read layouts from the file
 # @option    --layout           Read layouts from ${DF_OS_LAYOUT_DIR} directory
-# @flag   -n --dry-run          Show what layouts will be export (not actually run)
 layout::import() {
     local source="${argc_source}"
     local layout="${argc_layout}"

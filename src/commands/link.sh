@@ -7,8 +7,8 @@
 #   dotf link --regenerate-stow-local-ignore -- -v -n
 #
 # @meta require-tools stow,gawk
-# @arg stow*                                capture all remaining options for stow
-# @flag    --regenerate-stow-local-ignore   regenerate the .stow-local-ignore file for each package
+# @flag    --regenerate-stow-local-ignore           regenerate the .stow-local-ignore file for each package
+# @arg stow*                                        capture all remaining options for stow
 link() {
     dotf_link_make_deps
     dotf_link_make_pkgs
