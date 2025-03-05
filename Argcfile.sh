@@ -151,6 +151,11 @@ prerelease() {
     debug "Pre-release ${NAME}"
 
     local version="${argc_version}"
+    if [[ ! "${version}" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+        echo "Invalid version: ${version}" >&2
+        exit 1
+    fi
+
     local tag="v${version}"
     if git rev-parse "${tag}" >/dev/null 2>&1; then
         echo "tag already exists: ${tag}" >&2
