@@ -42,6 +42,9 @@ include "commands/download.sh"
 include "commands/gitignore/cli.sh"
 include "commands/gitignore/generate.sh"
 
+include "commands/github/cli.sh"
+include "commands/github/link.sh"
+
 include "commands/link.sh"
 
 include "commands/layout/cli.sh"
