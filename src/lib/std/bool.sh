@@ -1,6 +1,6 @@
 std::bool::is_true() {
-    case "$1" in
-        true | yes | [Yy] | on | 1)
+    case "${1@L}" in
+        true | yes | y | on | 1)
             true
             return
             ;;
@@ -12,8 +12,8 @@ std::bool::is_true() {
 }
 
 std::bool::is_false() {
-    case "$1" in
-        false | no | [Nn] | off | 0 | "")
+    case "${1@L}" in
+        false | no | n | off | 0 | "")
             true
             return
             ;;
