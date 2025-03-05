@@ -217,7 +217,6 @@ clean() {
 # Hooks
 _argc_before() {
     if [[ "${argc_debug}" == "1" ]]; then
-        echo "hahahahaha"
         set -x
     fi
 }
