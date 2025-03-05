@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.0] - 2025-03-05
+
+### Added
+
+- *(ci)* Validate version format before creating a tag ([5728746](https://github.com/druagoon/dotf/commit/5728746b823693f60732949b9779def465b4cccd))
+- *(github)* Add commands for managing GitHub repositories and linking URLs ([628e5e0](https://github.com/druagoon/dotf/commit/628e5e0fdb6c9ab3637557eb1e2ff45aca65dced))
+- *(package)* The `package new` command supports multiple plugin names ([c4fc41d](https://github.com/druagoon/dotf/commit/c4fc41d2be71bd6c9ebe60211f062dc1ae858b2a))
+- *(main)* Enable pipefail option for improved error handling ([6aa4861](https://github.com/druagoon/dotf/commit/6aa4861c71b17513e0d4516565b42a523f689397))
+
 ## [1.2.0] - 2025-03-03
 
 ### Added
@@ -39,6 +48,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 Initial release
 
+[1.3.0]: https://github.com/druagoon/dotf/compare/v1.2.0..v1.3.0
 [1.2.0]: https://github.com/druagoon/dotf/compare/v1.1.0..v1.2.0
 [1.1.0]: https://github.com/druagoon/dotf/compare/v1.0.0..v1.1.0
 [1.0.0]: https://github.com/druagoon/dotf/releases/tag/v1.0.0
