@@ -22,6 +22,7 @@ include "lib/std/os.sh"
 include "lib/std/colors.sh"
 include "lib/std/message.sh"
 include "lib/std/path.sh"
+include "lib/std/tips.sh"
 
 include "lib/local/consts.sh"
 include "lib/local/path.sh"
