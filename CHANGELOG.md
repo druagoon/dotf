@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.1] - 2025-03-07
+
+### Added
+
+- *(download)* Add silent mode option and progress feedback for downloads ([2ae2073](https://github.com/druagoon/dotf/commit/2ae20735e8a72b5cb782d3002ed1b98819ab6f97))
+
+### Fixed
+
+- *(hooks)* Handle unset argc_debug variable in _argc_before function ([5a698d5](https://github.com/druagoon/dotf/commit/5a698d5bc5ae312e15764becb17c7d9c446d5a99))
+- *(std)* Normalize boolean input handling in is_true and is_false functions ([9d237b6](https://github.com/druagoon/dotf/commit/9d237b683f60bee8a1785fc633eb006e09905f28))
+- *(argcfile)* Remove debug echo statement from _argc_before hook ([dd22ca3](https://github.com/druagoon/dotf/commit/dd22ca33e84cfede1f402be8114cca9dfa1db444))
+
 ## [1.3.0] - 2025-03-05
 
 ### Added
@@ -48,6 +60,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 Initial release
 
+[1.3.1]: https://github.com/druagoon/dotf/compare/v1.3.0..v1.3.1
 [1.3.0]: https://github.com/druagoon/dotf/compare/v1.2.0..v1.3.0
 [1.2.0]: https://github.com/druagoon/dotf/compare/v1.1.0..v1.2.0
 [1.1.0]: https://github.com/druagoon/dotf/compare/v1.0.0..v1.1.0
