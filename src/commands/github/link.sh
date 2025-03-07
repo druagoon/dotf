@@ -28,5 +28,6 @@ github::link() {
     if std::bool::is_true "${argc_copy:-}"; then
         printf "${converted_url}" | pbcopy
     fi
-    printf "${url} \033[34m==>\033[0m ${converted_url}\n"
+    std::tips::info "Convert ${url}"
+    echo "${converted_url}"
 }
