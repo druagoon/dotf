@@ -52,17 +52,9 @@ jobs:
       - name: Update Homebrew formula
         uses: dawidd6/action-homebrew-bump-formula@v4
         with:
-          # Required, custom GitHub access token with the 'public_repo' and 'workflow' scopes
           token: ${{ secrets.HOMEBREW_GITHUB_API_TOKEN }}
-          # Optional, use the origin repository instead of forking
           no_fork: true
-          # Optional, defaults to homebrew/core
           tap: druagoon/homebrew-brew
-          # Formula name, required
           formula: dotf
-          # Optional, will be determined automatically
-          # tag: ${{ github.ref }}
-          # Optional, will be determined automatically
-          # revision: ${{ github.sha }}
-          # Optional, if don't want to check for already open PRs
-          # force: false
+          user_name: github-actions[bot]
+          user_email: 41898282+github-actions[bot]@users.noreply.github.com
