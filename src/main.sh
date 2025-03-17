@@ -53,6 +53,7 @@ include "commands/layout/export.sh"
 include "commands/layout/import.sh"
 
 include "commands/mac/cli.sh"
+include "commands/mac/cleanmymac.sh"
 include "commands/mac/scanfiles.sh"
 
 include "commands/package/cli.sh"
