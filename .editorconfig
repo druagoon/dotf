@@ -1,2 +1,2 @@
-[contrib/completions/**]  # replace with the directory that you want shfmt to ignore
+[target/**] # replace with the directory that you want shfmt to ignore
 ignore = true

@@ -15,39 +15,40 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      # Install `argc` for building binaries
-      - uses: sigoden/install-binary@v1
+      - name: Install `shinc` for building binaries
+        uses: sigoden/install-binary@v1
         with:
-          repo: sigoden/argc
-          tag: v1.22.0
+          repo: druagoon/shinc-rs
+          name: shinc
 
-      # Install `shfmt` for formatting shell scripts
-      - uses: sigoden/install-binary@v1
+      - name: Install `shfmt` for formatting shell scripts
+        uses: sigoden/install-binary@v1
         with:
           repo: mvdan/sh
-          tag: v3.10.0
+          tag: v3.11.0
           name: shfmt
 
       - name: Clean up
-        run: argc clean
+        run: shinc clean
 
       - name: Compile and build binaries
-        run: argc build
+        run: shinc build
 
-      - name: Test binaries
-        run: argc test
+      - name: Generate man pages
+        run: shinc man
+
+      - name: Generate shell completions
+        run: shinc completions
 
       - name: Distribute binaries
-        run: argc dist
+        run: shinc dist
 
       - name: Release
         uses: docker://antonyurchenko/git-release:v6
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          args: |
-            dist/*.tar.gz
-            dist/*.sha256
+          args: target/dist/*
 
       - name: Update Homebrew formula
         uses: dawidd6/action-homebrew-bump-formula@v4

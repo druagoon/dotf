@@ -1,5 +1,3 @@
 ### Local ###
-/bin/
-/build/
-/contrib/man/
-/dist/
+/target/
+.envrc

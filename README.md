@@ -7,7 +7,7 @@ Lightweight and flexible CLI tool written in Bash for managing dotfiles efficien
 
 - [Installation](#installation)
 - [Development](#development)
-  - [Pre-release](#pre-release)
+  - [Release](#release)
 - [Changelog](#changelog)
 
 ## Installation
@@ -22,21 +22,23 @@ Or download the binary directly from [GitHub Releases](https://github.com/druago
 
 ## Development
 
-### Pre-release
+### Release
 
 To create a new release:
 
-Run the pre-release command with the new version:
+Run the `shinc release` command with the new version:
 
 ```sh
-argc prerelease <version>
+shinc release <version>
 ```
 
 This will:
 
-- Update version in `Argcfile.sh`
+- Update version in `.config/shinc/config.toml`
 - Update `CHANGELOG.md` using `cliff.toml` configuration by `git-cliff`
+- Commit changes
 - Create a git tag
+- Push to git remote
 
 Then the release workflow will automatically:
 
