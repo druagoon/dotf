@@ -6,21 +6,43 @@ Lightweight and flexible CLI tool written in Bash for managing dotfiles efficien
 **Table of Contents**
 
 - [Installation](#installation)
+  - [Homebrew](#homebrew)
+  - [Pre-built Binaries](#pre-built-binaries)
 - [Development](#development)
+  - [Dependencies](#dependencies)
   - [Release](#release)
 - [Changelog](#changelog)
 
 ## Installation
 
-You can install `dotf` using Homebrew:
+### Homebrew
 
 ```sh
 brew install druagoon/brew/dotf
 ```
 
-Or download the binary directly from [GitHub Releases](https://github.com/druagoon/dotf/releases).
+### Pre-built Binaries
+
+Alternatively, download pre-built binaries from [GitHub Releases](https://github.com/druagoon/dotf/releases),
+then extract it, and add the `dotf` binary to your `$PATH`.
+
+You can use the following command to download the latest release.
+
+```sh
+curl -fsSL https://github.com/druagoon/dotf/raw/master/install.sh | bash -s
+```
+
+Or see more help.
+
+```sh
+curl -fsSL https://github.com/druagoon/dotf/raw/master/install.sh | bash -s -- --help
+```
 
 ## Development
+
+### Dependencies
+
+- [shinc](https://github.com/druagoon/shinc-rs)
 
 ### Release
 
